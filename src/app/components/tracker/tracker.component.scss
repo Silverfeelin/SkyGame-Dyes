@@ -26,3 +26,15 @@
   background-color: var(--mat-sys-primary);
   color: var(--mat-sys-on-primary);
 }
+
+.btn-ws-status {
+  color: #6e7278 !important;
+  background-color: #282d37 !important;
+  box-shadow: unset !important;
+}
+
+.btn-ws-status-inactive {
+  color: #ff7e7e !important;
+  background-color: #852121 !important;
+  box-shadow: unset !important;
+}

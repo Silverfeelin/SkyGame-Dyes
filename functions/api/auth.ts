@@ -17,11 +17,12 @@ export const onRequestGet: PagesFunction<Env> = async (context) => {
   if (!userId) { return invalidRequest('Authorization header invalid.'); }
 
   const response = new Response('', { status: 201 });
-  const cookieFlags = 'HttpOnly; Secure; Path=/; SameSite=Strict;';
+  const cookieFlags = 'HttpOnly; Path=/; SameSite=Strict;';
+  const cookieSecure = context.request.url.startsWith('http://localhost') ? '' : 'Secure;';
   const cookieExpires = new Date(parseInt(expiresAt) - 5 * 60000).toUTCString();
 
-  response.headers.append('Set-Cookie', `Authorization=${accessToken}; Expires=${cookieExpires}; ${cookieFlags}`);
-  response.headers.append('Set-Cookie', `AuthorizationType=Discord; Expires=${cookieExpires}; ${cookieFlags}`);
+  response.headers.append('Set-Cookie', `Authorization=${accessToken}; Expires=${cookieExpires}; ${cookieFlags} ${cookieSecure}`);
+  response.headers.append('Set-Cookie', `AuthorizationType=Discord; Expires=${cookieExpires}; ${cookieFlags} ${cookieSecure}`);
   response.headers.append('Set-Cookie', `AuthorizationName=${encodeURIComponent(username)}; Expires=${cookieExpires}; Path=/;`);
 
   return response;

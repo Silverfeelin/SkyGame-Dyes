@@ -3,6 +3,16 @@
   <div #divMap class="map"></div>
 </div>
 <div class="fabs-bl">
+  <button class="btn-ws-status" [class.btn-ws-status-inactive]="wsStatus === 'closed'" mat-fab [attr.title]="wsStatusText" (click)="wsConnect()">
+    <mat-icon>
+      @switch (wsStatus) {
+        @case ('closed') { cloud_off }
+        @case ('connecting') { cloud_queue }
+        @case ('open') { cloud_done }
+        @default { cloud_off }
+      }
+    </mat-icon>
+  </button>
   <button mat-fab aria-label="Show areas" (click)="openMapDialog()">
     <mat-icon>map</mat-icon>
   </button>

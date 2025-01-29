@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, isDevMode, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, isDevMode, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { DateTime } from 'luxon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,24 +12,46 @@ import { TrackerMapMarkerDialogComponent } from './tracker-map-marker-dialog.com
 import { TrackerMapAreaDialogComponent } from './tracker-map-area-dialog.component';
 import { TrackerMapSaveDialogComponent } from './tracker-map-save-dialog.component';
 
+interface IMapMarker {
+  marker?: L.Marker;
+  epoch: number;
+  lat: number;
+  lng: number;
+  size: 'small' | 'medium' | 'large';
+}
+
+interface IReceivedMessage {
+	type: 'marker' | 'validation';
+	marker?: { epoch: number; lat: number; lng: number; size: number; }
+	message?: string;
+}
+
+type WebSocketStatus = 'connecting' | 'open' | 'closed';
 @Component({
   selector: 'app-tracker',
   imports: [ MatIconModule, MatButtonModule, MatDialogModule ],
   templateUrl: './tracker.component.html',
   styleUrl: './tracker.component.scss'
 })
-export class TrackerComponent implements OnInit, AfterViewInit {
+export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('divMap', { static: true }) mapDiv!: ElementRef<HTMLDivElement>;
 
+  // Map
   map?: L.Map;
   mapImageLayers: { [key: string]: L.ImageOverlay } = {};
+  mapMarkerLayer?: L.LayerGroup;
+  mapMarkers: Array<IMapMarker> = [];
   isEdgeMarkersInitialized = false;
+
+  // Add marker
   isAddingMarker = false;
   addMarker?: L.Marker;
   isFirstMarker = true;
 
   // Socket
   ws?: WebSocket;
+  wsStatus: WebSocketStatus = 'closed';
+  wsStatusText = 'Disconnected';
 
   constructor(
     private readonly _dialog: MatDialog
@@ -45,28 +67,14 @@ export class TrackerComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
-    const url = new URL(location.origin);
-    url.protocol = url.protocol === 'http:' ? 'ws:' : 'wss:';
-    url.pathname = '/api/ws';
+    this.wsConnect();
+  }
 
-    const ws = new WebSocket(url.toString());
-    this.ws = ws;
+  ngOnDestroy(): void {
+    if (this.ws) {
+      try { this.ws.close(); console.log('Closed websocket.'); } catch (e) { console.error(e); }
 
-    ws.onopen = () => {
-      console.log('Connected to WebSocket.');
-    };
-
-    ws.onmessage = (event) => {
-      console.log('Message from server:', event.data);
-    };
-
-    ws.onclose = () => {
-      console.log('WebSocket connection closed');
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
+    }
   }
 
   ngAfterViewInit(): void {
@@ -96,6 +104,10 @@ export class TrackerComponent implements OnInit, AfterViewInit {
     // L.marker([ 500, 500 ], { icon: trackerIcons.mediumPlant }).addTo(map);
     // L.marker([ 750, 750 ], { icon: trackerIcons.largePlant }).addTo(map);
 
+    // Marker layer
+    this.mapMarkerLayer = L.layerGroup().addTo(map);
+
+    // EdgeMarker plugin
     this.initializeEdgeMarkers();
 
     // Add marker on click.
@@ -108,9 +120,20 @@ export class TrackerComponent implements OnInit, AfterViewInit {
     });
   }
 
+  mapAddMarker(marker: IMapMarker): void {
+    if (!this.mapMarkerLayer) { return; }
+
+    const icon = trackerIcons[marker.size];
+    const m = L.marker([ marker.lat, marker.lng ], { icon });
+    marker.marker = m;
+
+    this.mapMarkerLayer.addLayer(marker.marker);
+    this.mapMarkers.push(marker);
+  }
+
   createAddMarker(pos: L.LatLng): void {
     // Create marker
-    const marker = L.marker(pos, { icon: trackerIcons.newPlant, draggable: true }).addTo(this.map!);
+    const marker = L.marker(pos, { icon: trackerIcons.new, draggable: true }).addTo(this.map!);
     this.addMarker = marker;
 
     // Create popup content
@@ -125,6 +148,7 @@ export class TrackerComponent implements OnInit, AfterViewInit {
       dialogRef.afterClosed().subscribe((result: IMarkerDialogData) => {
         if (!result) { return; }
         this.wsSaveMarker(result);
+        this.addMarker?.remove();
         this.addMarker = undefined;
         this.isAddingMarker = false;
       });
@@ -144,6 +168,7 @@ export class TrackerComponent implements OnInit, AfterViewInit {
     });
     this.addMarker.bindPopup(popup).openPopup();
   }
+
   openMapDialog(): void {
     const dialogRef = this._dialog.open(TrackerMapAreaDialogComponent, {
       data: { maps: trackerMaps }
@@ -186,20 +211,121 @@ export class TrackerComponent implements OnInit, AfterViewInit {
 
   // #region Websocket stuff
 
+  wsConnect(): void {
+    if (this.ws) { return; }
+
+    const url = new URL(location.origin);
+    url.protocol = url.protocol === 'http:' ? 'ws:' : 'wss:';
+    url.pathname = '/api/ws';
+
+    const ws = new WebSocket(url.toString());
+    this.ws = ws;
+    this.wsUpdateStatus('connecting');
+
+    ws.onopen = (evt) => {
+      this.wsUpdateStatus('open');
+      console.log('Connected to WebSocket.', evt);
+    };
+
+    ws.onmessage = (evt) => {
+      console.log('Message from server:', evt.data);
+      this.wsOnMessage(evt.data);
+    };
+
+    ws.onclose = (evt) => {
+      console.log('WebSocket connection closed', evt);
+      this.wsDisconnect();
+
+      if (evt.reason) {
+        setTimeout(() => {
+          alert(`Lost connection. Please try to reconnect by pressing the cloud icon in the bottom left corner. Reason: ${evt.reason}`);
+        });
+      }
+    };
+
+    ws.onerror = (e) => {
+      console.error('WebSocket error:', );
+      this.wsDisconnect();
+    };
+  }
+
+  wsDisconnect(): void {
+    if (!this.ws) { return; }
+    try { this.ws?.close(); } catch (e) { console.error(e); }
+    this.wsUpdateStatus('closed');
+    this.ws = undefined;
+  }
+
   wsSaveMarker(result: IMarkerDialogData): void {
     if (!this.ws) {
       console.error('WebSocket not connected.');
       return;
     }
 
+    let size = 1;
+    switch (result.size) {
+      case 'medium': size = 2; break;
+      case 'large': size = 3; break;
+      default: break;
+    }
+
     const data = JSON.stringify({
       type: 'marker',
-      size: result.size,
+      size,
       lat: result.lat,
       lng: result.lng
     });
 
     this.ws.send(data);
+  }
+
+  wsUpdateStatus(status: WebSocketStatus): void {
+    this.wsStatus = status;
+    switch (status) {
+      case 'connecting': this.wsStatusText = 'Connecting...'; break;
+      case 'open': this.wsStatusText = 'Connected'; break;
+      case 'closed': this.wsStatusText = 'Disconnected'; break;
+      default: this.wsStatusText = 'Unknown'; break;
+    }
+  }
+
+  wsOnMessage(msg: string): void {
+    try {
+      const data = JSON.parse(msg) as IReceivedMessage;
+      if (typeof data !== 'object') { throw new Error('Invalid message data structure.'); }
+      switch (data.type) {
+        case 'marker': this.wsOnMarker(data); break;
+        case 'validation': alert(data); break;
+        default: throw new Error('Invalid message type.');
+      }
+    } catch (e) {
+      console.error('Error parsing message:', e);
+    }
+  }
+
+  wsOnMarker(msg: IReceivedMessage): void {
+    if (!msg?.marker) { throw new Error('Invalid marker data.'); }
+    if (!this.map) { throw new Error('Map not initialized.'); }
+
+    const marker: IMapMarker = {
+      epoch: msg.marker.epoch,
+      lat: msg.marker.lat,
+      lng: msg.marker.lng,
+      size: 'small'
+    }
+
+    switch (msg.marker.size) {
+      case 2: marker.size = 'medium'; break;
+      case 3: marker.size = 'large'; break;
+      default: break;
+    }
+
+    this.mapAddMarker(marker);
+  }
+
+  wsOnValidation(msg: IReceivedMessage): void {
+    if (!msg?.message) { throw new Error('Invalid validation message.'); }
+    alert(msg.message);
   }
 
   // #endregion
