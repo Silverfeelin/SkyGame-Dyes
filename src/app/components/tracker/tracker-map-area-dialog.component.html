@@ -1,0 +1,10 @@
+<mat-dialog-content>
+  <mat-label>Jump to area</mat-label>
+  <mat-chip-set>
+    @for (map of data.maps; track $index) {
+    <mat-chip (click)="selectMap(map)">
+      {{ map.name }}
+    </mat-chip>
+  }
+  </mat-chip-set>
+</mat-dialog-content>

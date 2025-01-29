@@ -1,0 +1,21 @@
+<mat-dialog-content>
+  <div>
+    <mat-label>Plant size</mat-label>
+  </div>
+  <!-- <div>
+    <mat-button-toggle-group (change)="onSizeChange($event)" [value]="size">
+      <mat-button-toggle value="small">Small</mat-button-toggle>
+      <mat-button-toggle value="medium">Medium</mat-button-toggle>
+      <mat-button-toggle value="large">Large</mat-button-toggle>
+    </mat-button-toggle-group>
+  </div> -->
+  <div style="display: flex; gap: 4px;" class="mb-half">
+    <img (click)="this.size='small'" class="img-size" [class.img-size-active]="size==='small'" src="/assets/external/icons/small.png" alt="Small plant" />
+    <img (click)="this.size='medium'" class="img-size" [class.img-size-active]="size==='medium'" src="/assets/external/icons/medium.png" alt="Medium plant" />
+    <img (click)="this.size='large'" class="img-size" [class.img-size-active]="size==='large'" src="/assets/external/icons/large.png" alt="Large plant" />
+  </div>
+  <div>
+    <button mat-flat-button color="primary" (click)="save()">Save</button>
+    <button mat-raised-button color="primary" (click)="closeDialog()">Cancel</button>
+  </div>
+</mat-dialog-content>

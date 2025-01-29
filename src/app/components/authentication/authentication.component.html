@@ -1,0 +1,16 @@
+<h1>Sky Dye Tracker</h1>
+<p>
+  Welcome to the Sky Dye Tracker! This website functions as a real-time interactive map to find and share dye plants in the game <a href="https://www.thatskygame.com/" target="_blank">Sky: Children of the Light</a>.
+</p>
+<p>The Sky Dye Tracker is not non-commercial, is not affiliated with thatgamecompany and is made available for informational purposes.</p>
+<p>
+  To use the Sky Dye Tracker, please first authenticate through Discord. Don't worry, we won't ask for more than your username!<br/>
+  Please read our <a [routerLink]="'/privacy'" class="text-link">Privacy Policy</a> for more details.
+</p>
+<button mat-flat-button color="primary" type="button" (click)="authenticate()">Authenticate</button>
+
+@if (loading) {
+  <div class="loader">
+    <h1>Authorizing...</h1>
+  </div>
+}

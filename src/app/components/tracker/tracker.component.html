@@ -1,1 +1,26 @@
-This is a work in progress.
+
+<div class="map-container">
+  <div #divMap class="map"></div>
+</div>
+<div class="fabs-bl">
+  <button mat-fab aria-label="Show areas" (click)="openMapDialog()">
+    <mat-icon>map</mat-icon>
+  </button>
+  <button mat-fab aria-label="Add dye plant" (click)="openMarkerDialog()" [class.btn-highlight]="isAddingMarker">
+    <mat-icon>add</mat-icon>
+  </button>
+</div>
+
+<template id="template-marker-popup">
+  <div class="marker-popup">
+    <p>
+      Now's the time to zoom in and verify the location!
+      You can drag the marker around before saving.
+      Other details such as the plant size will follow after this step.
+    </p>
+    <div>
+      <button class="marker-popup-save" mat-flat-button>Add</button>
+      <button class="marker-popup-delete" mat-flat-button>Cancel</button>
+    </div>
+  </div>
+</template>

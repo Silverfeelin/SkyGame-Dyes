@@ -1,0 +1,29 @@
+:host {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.header {
+  color: var(--mat-sys-primary);
+  background: var(--mat-sys-primary-container);
+  padding: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  flex: 0 0 auto; /* Header uses its own size */
+  text-align: center;
+}
+
+.header-left {
+  float: left;
+}
+
+.header-right {
+  float: right;
+}
+
+.content {
+  flex: 1 1 auto; /* Content fills the remaining space */
+  overflow: auto; /* Allows scrolling if content overflows */
+}

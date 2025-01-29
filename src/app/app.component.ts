@@ -1,4 +1,6 @@
 import { Component } from '@angular/core';
+import { MatIconRegistry } from '@angular/material/icon';
+import { DomSanitizer } from '@angular/platform-browser';
 import { RouterOutlet } from '@angular/router';
 
 @Component({
@@ -8,5 +10,11 @@ import { RouterOutlet } from '@angular/router';
   styleUrl: './app.component.scss'
 })
 export class AppComponent {
-  title = 'SkyGame-Dyes';
+
+  constructor(
+    private readonly _domSanitizer: DomSanitizer,
+    private readonly _matIconRegistry: MatIconRegistry
+  ) {
+    _matIconRegistry.addSvgIcon('favicon', _domSanitizer.bypassSecurityTrustResourceUrl('/assets/favicon.svg'));
+  }
 }

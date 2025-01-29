@@ -1,0 +1,28 @@
+.map-container {
+  height: 100%;
+  width: 100%;
+}
+
+.map {
+  height: 100%;
+  width: 100%;
+  margin: 0 auto;
+  position: relative;
+  background: #0f1520;
+}
+
+.fabs-bl {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+}
+
+.btn-highlight {
+  background-color: var(--mat-sys-primary);
+  color: var(--mat-sys-on-primary);
+}

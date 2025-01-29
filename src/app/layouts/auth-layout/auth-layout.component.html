@@ -1,0 +1,23 @@
+<header class="header">
+  <div class="header-left">
+    <span>
+      <a mat-icon-button href="https://sky-planner.com/tools" title="Visit Sky Planner">
+        <mat-icon svgIcon="favicon"></mat-icon>
+      </a>
+    </span>
+  </div>
+  <div class="header-right">
+    <a [routerLink]="'/privacy'" mat-icon-button aria-label="Privacy policy">
+      <mat-icon>question_mark</mat-icon>
+    </a>
+    @if (username) {
+      <span style="vertical-align:super;">{{ username }}</span>
+    }
+    <button mat-icon-button aria-label="Logout" (click)="logoutAsync()">
+      <mat-icon>logout</mat-icon>
+    </button>
+  </div>
+</header>
+<div class="content">
+  <router-outlet></router-outlet>
+</div>
