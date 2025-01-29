@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import L from 'leaflet';
+import L, { PointExpression, PointTuple } from 'leaflet';
 import { trackerIcons } from './tracker-icons';
 import { trackerMaps } from './tracker-maps';
 import { DateHelper } from '../../helpers/date-helper';
@@ -11,6 +11,7 @@ import { IMarkerDialogData, IPanDialogData } from './tracker.interface';
 import { TrackerMapMarkerDialogComponent } from './tracker-map-marker-dialog.component';
 import { TrackerMapAreaDialogComponent } from './tracker-map-area-dialog.component';
 import { TrackerMapSaveDialogComponent } from './tracker-map-save-dialog.component';
+import { DateTimePipe } from '../../pipes/date-time.pipe';
 
 interface IMapMarker {
   marker?: L.Marker;
@@ -29,7 +30,7 @@ interface IReceivedMessage {
 type WebSocketStatus = 'connecting' | 'open' | 'closed';
 @Component({
   selector: 'app-tracker',
-  imports: [ MatIconModule, MatButtonModule, MatDialogModule ],
+  imports: [ MatIconModule, MatButtonModule, MatDialogModule, DateTimePipe ],
   templateUrl: './tracker.component.html',
   styleUrl: './tracker.component.scss'
 })
@@ -53,6 +54,10 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
   wsStatus: WebSocketStatus = 'closed';
   wsStatusText = 'Disconnected';
 
+  clockInterval?: number;
+  clockLastClear = DateTime.now().setZone(DateHelper.skyTimeZone).startOf('hour');
+  clockSkyTime?: DateTime;
+
   constructor(
     private readonly _dialog: MatDialog
   ) {
@@ -68,6 +73,12 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.wsConnect();
+
+    // Set up clock
+    this.mapClearInactiveMarkers();
+    this.clockInterval = setInterval(() => {
+      this.mapClearInactiveMarkers();
+    }, 5000);
   }
 
   ngOnDestroy(): void {
@@ -99,11 +110,6 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
       x += m.size[1] + pad;
     });
 
-    // Test markers
-    // L.marker([ 250, 250 ], { icon: trackerIcons.smallPlant }).addTo(map);
-    // L.marker([ 500, 500 ], { icon: trackerIcons.mediumPlant }).addTo(map);
-    // L.marker([ 750, 750 ], { icon: trackerIcons.largePlant }).addTo(map);
-
     // Marker layer
     this.mapMarkerLayer = L.layerGroup().addTo(map);
 
@@ -115,11 +121,12 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
       if (isDevMode()) { navigator.clipboard.writeText(`[${e.latlng.lat}, ${e.latlng.lng}]`); }
 
       if (this.isAddingMarker && !this.addMarker) {
-        this.createAddMarker(e.latlng);
+        this.mapPlaceCreateMarker(e.latlng);
       }
     });
   }
 
+  /** Adds a marker to the map. */
   mapAddMarker(marker: IMapMarker): void {
     if (!this.mapMarkerLayer) { return; }
 
@@ -129,9 +136,36 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.mapMarkerLayer.addLayer(marker.marker);
     this.mapMarkers.push(marker);
+
+    m.on('dblclick', () => {
+      const opacity = m.options.opacity !== 0.3 ? 0.3 : 1;
+      m.setOpacity(opacity);
+    });
   }
 
-  createAddMarker(pos: L.LatLng): void {
+  /** Clears markers from the map. */
+  mapClearMarkers(): void {
+    this.mapMarkerLayer?.clearLayers();
+    this.mapMarkers = [];
+  }
+
+  mapClearInactiveMarkers(): void {
+    const now = DateTime.now().setZone(DateHelper.skyTimeZone);
+    this.clockSkyTime = now;
+    const epoch = now.startOf('hour').toMillis();
+
+    this.mapMarkers = this.mapMarkers.filter(marker => {
+      if (marker.epoch < epoch) {
+        this.mapMarkerLayer?.removeLayer(marker.marker!);
+        return false;
+      }
+      return true;
+    });
+  }
+
+
+  /** Starts adding a map marker.  */
+  mapPlaceCreateMarker(pos: L.LatLng): void {
     // Create marker
     const marker = L.marker(pos, { icon: trackerIcons.new, draggable: true }).addTo(this.map!);
     this.addMarker = marker;
@@ -142,8 +176,9 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     div.appendChild(template.content.cloneNode(true));
 
     // Go to details
-    const data: IMarkerDialogData = { lat: pos.lat, lng: pos.lng, size: 'medium' };
     div.querySelector('.marker-popup-save')?.addEventListener('click', () => {
+      const pos = marker.getLatLng();
+      const data: IMarkerDialogData = { lat: pos.lat, lng: pos.lng, size: 'medium' };
       const dialogRef = this._dialog.open(TrackerMapSaveDialogComponent, { data, disableClose: true });
       dialogRef.afterClosed().subscribe((result: IMarkerDialogData) => {
         if (!result) { return; }
@@ -221,6 +256,9 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     const ws = new WebSocket(url.toString());
     this.ws = ws;
     this.wsUpdateStatus('connecting');
+
+    // Reset markers since active markers are received on connect.
+    this.mapClearMarkers();
 
     ws.onopen = (evt) => {
       this.wsUpdateStatus('open');

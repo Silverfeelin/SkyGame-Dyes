@@ -1,3 +1,7 @@
+:host {
+  position: relative;
+}
+
 .map-container {
   height: 100%;
   width: 100%;
@@ -37,4 +41,14 @@
   color: #ff7e7e !important;
   background-color: #852121 !important;
   box-shadow: unset !important;
+}
+
+.clock {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  padding: 8px;
+  border-radius: 16px;
+  background-color: #282d37;
 }

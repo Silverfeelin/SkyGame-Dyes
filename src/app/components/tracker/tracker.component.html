@@ -2,6 +2,13 @@
 <div class="map-container">
   <div #divMap class="map"></div>
 </div>
+
+@if (clockSkyTime) {
+  <div class="clock" title="Current Sky time. Dye plants rotate hourly.">
+    {{ clockSkyTime | datetime: 'HH:mm' }}
+  </div>
+}
+
 <div class="fabs-bl">
   <button class="btn-ws-status" [class.btn-ws-status-inactive]="wsStatus === 'closed'" mat-fab [attr.title]="wsStatusText" (click)="wsConnect()">
     <mat-icon>
