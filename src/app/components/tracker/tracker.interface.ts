@@ -7,5 +7,6 @@ export interface IPanDialogData {
 
 export interface IMarkerDialogData {
   size: 'small' | 'medium' | 'large';
-  pos: L.LatLngExpression;
+  lat: number;
+  lng: number;
 }

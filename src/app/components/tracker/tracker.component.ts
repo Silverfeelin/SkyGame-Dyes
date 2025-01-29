@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, isDevMode, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, isDevMode, OnInit, ViewChild } from '@angular/core';
 import { DateTime } from 'luxon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -18,7 +18,7 @@ import { TrackerMapSaveDialogComponent } from './tracker-map-save-dialog.compone
   templateUrl: './tracker.component.html',
   styleUrl: './tracker.component.scss'
 })
-export class TrackerComponent implements AfterViewInit {
+export class TrackerComponent implements OnInit, AfterViewInit {
   @ViewChild('divMap', { static: true }) mapDiv!: ElementRef<HTMLDivElement>;
 
   map?: L.Map;
@@ -27,6 +27,9 @@ export class TrackerComponent implements AfterViewInit {
   isAddingMarker = false;
   addMarker?: L.Marker;
   isFirstMarker = true;
+
+  // Socket
+  ws?: WebSocket;
 
   constructor(
     private readonly _dialog: MatDialog
@@ -38,6 +41,31 @@ export class TrackerComponent implements AfterViewInit {
 
     edgeMarkerScript.onload = () => {
       this.initializeEdgeMarkers();
+    };
+  }
+
+  ngOnInit(): void {
+    const url = new URL(location.origin);
+    url.protocol = url.protocol === 'http:' ? 'ws:' : 'wss:';
+    url.pathname = '/api/ws';
+
+    const ws = new WebSocket(url.toString());
+    this.ws = ws;
+
+    ws.onopen = () => {
+      console.log('Connected to WebSocket.');
+    };
+
+    ws.onmessage = (event) => {
+      console.log('Message from server:', event.data);
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket connection closed');
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
     };
   }
 
@@ -91,7 +119,7 @@ export class TrackerComponent implements AfterViewInit {
     div.appendChild(template.content.cloneNode(true));
 
     // Go to details
-    const data: IMarkerDialogData = { pos, size: 'medium' };
+    const data: IMarkerDialogData = { lat: pos.lat, lng: pos.lng, size: 'medium' };
     div.querySelector('.marker-popup-save')?.addEventListener('click', () => {
       const dialogRef = this._dialog.open(TrackerMapSaveDialogComponent, { data, disableClose: true });
       dialogRef.afterClosed().subscribe((result: IMarkerDialogData) => {
@@ -159,7 +187,19 @@ export class TrackerComponent implements AfterViewInit {
   // #region Websocket stuff
 
   wsSaveMarker(result: IMarkerDialogData): void {
-    throw new Error('Method not implemented.');
+    if (!this.ws) {
+      console.error('WebSocket not connected.');
+      return;
+    }
+
+    const data = JSON.stringify({
+      type: 'marker',
+      size: result.size,
+      lat: result.lat,
+      lng: result.lng
+    });
+
+    this.ws.send(data);
   }
 
   // #endregion
