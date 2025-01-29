@@ -26,9 +26,21 @@
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
             "assets": [
-              "src/favicon.ico",
-              "src/robots.txt",
-              "src/assets"
+              {
+                "glob": "**/*",
+                "input": "src/assets",
+                "output": "/assets"
+              },
+              {
+                "glob": "favicon.ico",
+                "input": "./",
+                "output": "/"
+              },
+              {
+                "glob": "robots.txt",
+                "input": "./",
+                "output": "/"
+              }
             ],
             "styles": [
               "@angular/material/prebuilt-themes/cyan-orange.css",
