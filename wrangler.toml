@@ -8,5 +8,5 @@ name = "DURABLE_SKY_DYE"
 class_name = "SkyGameDyeServer"
 script_name = "sky-game-dyes-server"
 
-[[vars]]
+[vars]
 NODE_VERSION = "20"
