@@ -7,3 +7,6 @@ compatibility_date = "2025-01-28"
 name = "DURABLE_SKY_DYE"
 class_name = "SkyGameDyeServer"
 script_name = "sky-game-dyes-server"
+
+[[vars]]
+NODE_VERSION = "20"
