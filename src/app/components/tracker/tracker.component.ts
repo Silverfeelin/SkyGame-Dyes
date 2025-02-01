@@ -318,9 +318,13 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     }
 
     if (!this.ws) { return; }
-    setInterval(() => {
+    let pollCount = 0;
+    this.wsPollInterval = setInterval(() => {
       if (this.ws?.readyState !== WebSocket.OPEN) { return; }
       this.ws.send('ping');
+      if (++pollCount < 10) { return; }
+      clearInterval(this.wsPollInterval);
+      this.wsPollInterval = undefined;
     }, 60 * 1000);
   }
 
