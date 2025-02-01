@@ -31,10 +31,15 @@
 <template id="template-marker-popup">
   <div class="marker-popup">
     <p>
-      Now's the time to zoom in and verify the location!
-      You can drag the marker around before saving.
-      Other details such as the plant size will follow after this step.
+      Now's the time to zoom in and verify the details!
+      You can also drag the marker around before saving.
     </p>
+    <div style="margin-bottom: 8px;">
+      <b>Plant size</b><br/>
+      <img title="Bulbs" class="img-size" data-size="1" src="/assets/external/icons/small.png" alt="Small plant" />
+      <img title="Medium plant" class="img-size img-size-active" data-size="2" src="/assets/external/icons/medium.png" alt="Medium plant" />
+      <img title="Massive plant" class="img-size" data-size="3" src="/assets/external/icons/large.png" alt="Large plant" />
+    </div>
     <div>
       <button class="marker-popup-save" mat-flat-button>Add</button>
       <button class="marker-popup-delete" mat-flat-button>Cancel</button>

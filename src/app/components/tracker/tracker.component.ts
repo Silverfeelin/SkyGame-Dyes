@@ -3,14 +3,13 @@ import { DateTime } from 'luxon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
-import L, { PointExpression, PointTuple } from 'leaflet';
+import L from 'leaflet';
 import { trackerIcons } from './tracker-icons';
 import { trackerMaps } from './tracker-maps';
 import { DateHelper } from '../../helpers/date-helper';
-import { IMarkerDialogData, IPanDialogData } from './tracker.interface';
+import { IPanDialogData } from './tracker.interface';
 import { TrackerMapMarkerDialogComponent } from './tracker-map-marker-dialog.component';
 import { TrackerMapAreaDialogComponent } from './tracker-map-area-dialog.component';
-import { TrackerMapSaveDialogComponent } from './tracker-map-save-dialog.component';
 import { DateTimePipe } from '../../pipes/date-time.pipe';
 
 interface IMapMarker {
@@ -19,7 +18,13 @@ interface IMapMarker {
   epoch: number;
   lat: number;
   lng: number;
-  size: 'small' | 'medium' | 'large';
+  size: number;
+}
+
+interface IWsAddMarker {
+  lat: number;
+  lng: number;
+  size: 1 | 2 | 3;
 }
 
 type WsMarker = [ number, number, number, number, number ]; // [id, epoch, lat, lng, size ]
@@ -51,7 +56,7 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
   // Add marker
   isAddingMarker = false;
   addMarker?: L.Marker;
-  isFirstMarker = true;
+  isFirstMarker = localStorage.getItem('tracker-first-marker') !== 'false';
 
   // Socket
   ws?: WebSocket;
@@ -135,7 +140,10 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
   mapAddMarker(marker: IMapMarker): void {
     if (!this.mapMarkerLayer) { return; }
 
-    const icon = trackerIcons[marker.size];
+    const sizeIcon = marker.size === 3 ? 'large'
+      : marker.size === 1 ? 'small'
+      : 'medium';
+    const icon = trackerIcons[sizeIcon];
     const m = L.marker([ marker.lat, marker.lng ], { icon });
     marker.marker = m;
 
@@ -169,23 +177,40 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     const marker = L.marker(pos, { icon: trackerIcons.new, draggable: true }).addTo(this.map!);
     this.addMarker = marker;
 
+    const data: IWsAddMarker = {
+      lat: pos.lat,
+      lng: pos.lng,
+      size: 2
+    };
+
     // Create popup content
     const template = document.getElementById('template-marker-popup') as HTMLTemplateElement;
     const div = document.createElement('div');
     div.appendChild(template.content.cloneNode(true));
 
-    // Go to details
+    const sizes = [...div.querySelectorAll('.img-size')];
+    sizes.forEach(s => s.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      const size = +(target.dataset['size'] as any);
+      data.size = (size >= 1 && size <= 3 ? size : 2) as 1 | 2 | 3;
+      sizes.forEach(s => s.classList.remove('img-size-active'));
+      target.classList.add('img-size-active');
+    }));
+
+    // Save
     div.querySelector('.marker-popup-save')?.addEventListener('click', () => {
+      if (!this.ws?.OPEN) {
+        alert('Not connected. Please reconnect before saving.');
+        return;
+      }
+
       const pos = marker.getLatLng();
-      const data: IMarkerDialogData = { lat: pos.lat, lng: pos.lng, size: 'medium' };
-      const dialogRef = this._dialog.open(TrackerMapSaveDialogComponent, { data, disableClose: true });
-      dialogRef.afterClosed().subscribe((result: IMarkerDialogData) => {
-        if (!result) { return; }
-        this.wsSaveMarker(result);
-        this.addMarker?.remove();
-        this.addMarker = undefined;
-        this.isAddingMarker = false;
-      });
+      data.lat = pos.lat;
+      data.lng = pos.lng;
+      this.wsSaveMarker(data);
+
+      marker.remove();
+      this.addMarker = undefined;
     });
 
     // Cancel
@@ -237,6 +262,7 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     if (this.isAddingMarker && this.isFirstMarker) {
       this._dialog.open(TrackerMapMarkerDialogComponent);
       this.isFirstMarker = false;
+      localStorage.setItem('tracker-first-marker', 'false');
     } else if (!this.isAddingMarker) {
       this.addMarker?.remove();
       this.addMarker = undefined;
@@ -305,22 +331,15 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     this.ws = undefined;
   }
 
-  wsSaveMarker(result: IMarkerDialogData): void {
+  wsSaveMarker(result: IWsAddMarker): void {
     if (!this.ws) {
       console.error('WebSocket not connected.');
       return;
     }
 
-    let size = 1;
-    switch (result.size) {
-      case 'medium': size = 2; break;
-      case 'large': size = 3; break;
-      default: break;
-    }
-
     const data = JSON.stringify({
       type: 'marker',
-      size,
+      size: result.size,
       lat: result.lat,
       lng: result.lng
     });
@@ -390,14 +409,8 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
       epoch: msg[1],
       lat: msg[2],
       lng: msg[3],
-      size: 'small'
+      size: msg[4]
     };
-
-    switch (msg[4]) {
-      case 2: marker.size = 'medium'; break;
-      case 3: marker.size = 'large'; break;
-      default: break;
-    }
 
     return marker;
   }

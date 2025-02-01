@@ -52,3 +52,20 @@
   border-radius: 16px;
   background-color: #282d37;
 }
+
+:host ::ng-deep {
+  .marker-popup {
+    .img-size {
+      cursor: pointer;
+    }
+
+    .img-size-active {
+      filter: drop-shadow(0 0 4px var(--mat-sys-primary));
+    }
+
+    .img-size:not(.img-size-active) {
+      filter: grayscale(100%);
+    }
+
+  }
+}
