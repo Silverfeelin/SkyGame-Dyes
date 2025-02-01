@@ -15,15 +15,19 @@ import { DateTimePipe } from '../../pipes/date-time.pipe';
 
 interface IMapMarker {
   marker?: L.Marker;
+  id: number;
   epoch: number;
   lat: number;
   lng: number;
   size: 'small' | 'medium' | 'large';
 }
 
+type WsMarker = [ number, number, number, number, number ]; // [id, epoch, lat, lng, size ]
+
 interface IReceivedMessage {
-	type: 'marker' | 'validation';
-	marker?: { epoch: number; lat: number; lng: number; size: number; }
+	type: 'marker' | 'markers' | 'validation';
+  markers?: Array<WsMarker>;
+	marker?: WsMarker;
 	message?: string;
 }
 
@@ -53,6 +57,7 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
   ws?: WebSocket;
   wsStatus: WebSocketStatus = 'closed';
   wsStatusText = 'Disconnected';
+  wsPollInterval?: number;
 
   clockInterval?: number;
   clockLastClear = DateTime.now().setZone(DateHelper.skyTimeZone).startOf('hour');
@@ -141,12 +146,6 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
       const opacity = m.options.opacity !== 0.3 ? 0.3 : 1;
       m.setOpacity(opacity);
     });
-  }
-
-  /** Clears markers from the map. */
-  mapClearMarkers(): void {
-    this.mapMarkerLayer?.clearLayers();
-    this.mapMarkers = [];
   }
 
   mapClearInactiveMarkers(): void {
@@ -257,15 +256,14 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     this.ws = ws;
     this.wsUpdateStatus('connecting');
 
-    // Reset markers since active markers are received on connect.
-    this.mapClearMarkers();
-
     ws.onopen = (evt) => {
       this.wsUpdateStatus('open');
       console.log('Connected to WebSocket.', evt);
+      this.wsPoll();
     };
 
     ws.onmessage = (evt) => {
+      if (evt.data === 'pong') { return; }
       console.log('Message from server:', evt.data);
       this.wsOnMessage(evt.data);
     };
@@ -285,6 +283,19 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
       console.error('WebSocket error:', );
       this.wsDisconnect();
     };
+  }
+
+  wsPoll(): void {
+    if (this.wsPollInterval) {
+      clearInterval(this.wsPollInterval);
+      this.wsPollInterval = undefined;
+    }
+
+    if (!this.ws) { return; }
+    setInterval(() => {
+      if (this.ws?.readyState !== WebSocket.OPEN) { return; }
+      this.ws.send('ping');
+    }, 60 * 1000);
   }
 
   wsDisconnect(): void {
@@ -332,6 +343,7 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
       const data = JSON.parse(msg) as IReceivedMessage;
       if (typeof data !== 'object') { throw new Error('Invalid message data structure.'); }
       switch (data.type) {
+        case 'markers': this.wsOnMarkers(data); break;
         case 'marker': this.wsOnMarker(data); break;
         case 'validation': alert(data); break;
         default: throw new Error('Invalid message type.');
@@ -341,24 +353,53 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  wsOnMarkers(msg: IReceivedMessage): void {
+    const markers = (msg.markers || []).map(m => this.wsDeserializeMarker(m));
+    const markerIds = new Set(markers.map(m => m.id));
+
+    // Remove markers that are not in the new list.
+    const mapMarkerIds = new Set();
+    const mapMarkers: Array<IMapMarker> = [];
+    this.mapMarkers.forEach(m => {
+      if (markerIds.has(m.id)) {
+        mapMarkers.push(m);
+        mapMarkerIds.add(m.id);
+      } else {
+        m.marker?.remove();
+      }
+    });
+
+    // Add new markers from the list.
+    this.mapMarkers = mapMarkers;
+    markers.filter(m => !mapMarkerIds.has(m.id)).forEach(m => {
+      this.mapAddMarker(m);
+    });
+  }
+
   wsOnMarker(msg: IReceivedMessage): void {
     if (!msg?.marker) { throw new Error('Invalid marker data.'); }
     if (!this.map) { throw new Error('Map not initialized.'); }
 
-    const marker: IMapMarker = {
-      epoch: msg.marker.epoch,
-      lat: msg.marker.lat,
-      lng: msg.marker.lng,
-      size: 'small'
-    }
+    const marker = this.wsDeserializeMarker(msg.marker);
+    this.mapAddMarker(marker);
+  }
 
-    switch (msg.marker.size) {
+  wsDeserializeMarker(msg: WsMarker): IMapMarker {
+    const marker: IMapMarker = {
+      id: msg[0],
+      epoch: msg[1],
+      lat: msg[2],
+      lng: msg[3],
+      size: 'small'
+    };
+
+    switch (msg[4]) {
       case 2: marker.size = 'medium'; break;
       case 3: marker.size = 'large'; break;
       default: break;
     }
 
-    this.mapAddMarker(marker);
+    return marker;
   }
 
   wsOnValidation(msg: IReceivedMessage): void {
