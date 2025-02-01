@@ -30,7 +30,8 @@ interface IWsAddMarker {
 type WsMarker = [ number, number, number, number, number ]; // [id, epoch, lat, lng, size ]
 
 interface IReceivedMessage {
-	type: 'marker' | 'markers' | 'validation';
+	type: 'marker' | 'markers' | 'delete' | 'validation';
+  id?: number;
   markers?: Array<WsMarker>;
 	marker?: WsMarker;
 	message?: string;
@@ -150,9 +151,35 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     this.mapMarkerLayer.addLayer(marker.marker);
     this.mapMarkers.push(marker);
 
+    // Create popup content
+    const template = document.getElementById('template-marker-popup') as HTMLTemplateElement;
+    const div = document.createElement('div');
+    div.appendChild(template.content.cloneNode(true));
+
+    div.querySelector('.marker-popup-delete')?.addEventListener('click', () => {
+      if (!this.ws?.OPEN) {
+        alert('Not connected. Please reconnect before deleting.');
+        return;
+      }
+
+      const data = JSON.stringify({
+        type: 'delete',
+        id: marker.id
+      });
+
+      this.ws.send(data);
+    });
+
+    const popup = L.popup({
+      content: div,
+      offset: [0, -12],
+    });
+    m.bindPopup(popup);
+
     m.on('dblclick', () => {
       const opacity = m.options.opacity !== 0.3 ? 0.3 : 1;
       m.setOpacity(opacity);
+      m.closePopup();
     });
   }
 
@@ -184,7 +211,7 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     };
 
     // Create popup content
-    const template = document.getElementById('template-marker-popup') as HTMLTemplateElement;
+    const template = document.getElementById('template-create-popup') as HTMLTemplateElement;
     const div = document.createElement('div');
     div.appendChild(template.content.cloneNode(true));
 
@@ -368,7 +395,8 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
       switch (data.type) {
         case 'markers': this.wsOnMarkers(data); break;
         case 'marker': this.wsOnMarker(data); break;
-        case 'validation': alert(data); break;
+        case 'delete': this.wsOnDelete(data); break;
+        case 'validation': alert(data.message || 'Something went wrong.'); break;
         default: throw new Error('Invalid message type.');
       }
     } catch (e) {
@@ -405,6 +433,16 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
 
     const marker = this.wsDeserializeMarker(msg.marker);
     this.mapAddMarker(marker);
+  }
+
+  wsOnDelete(msg: IReceivedMessage): void {
+    if (!msg.id) { return; }
+    const i = this.mapMarkers.findIndex(m => m.id === msg.id);
+    if (i < 0) { return; }
+
+    const marker = this.mapMarkers[i];
+    marker.marker?.remove();
+    this.mapMarkers.splice(i, 1);
   }
 
   wsDeserializeMarker(msg: WsMarker): IMapMarker {
