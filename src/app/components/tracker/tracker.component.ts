@@ -52,6 +52,7 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
   mapImageLayers: { [key: string]: L.ImageOverlay } = {};
   mapMarkerLayer?: L.LayerGroup;
   mapMarkers: Array<IMapMarker> = [];
+  mapRealmLayers: { [key: string]: L.LayerGroup } = {};
   isEdgeMarkersInitialized = false;
 
   // Add marker
@@ -114,9 +115,43 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     L.control.attribution({ position: 'bottomright', prefix: 'Leaflet | Maps provided by' }).addTo(this.map);
 
     const pad = 320;
-    let x = 0;
+    const realmPad = 100000;
+    let x =  -realmPad;
+    let lastRealm = '';
+    let realmLayer: L.LayerGroup | undefined;
+    let firstLayer = true;
     trackerMaps.forEach((m) => {
-      const layer = L.imageOverlay(m.src, [[0, x], [m.size[0], x + m.size[1]]], { attribution: m.attribution }).addTo(map);
+      if (m.realm !== lastRealm) {
+        x += realmPad;
+        lastRealm = m.realm;
+        realmLayer = L.layerGroup();
+        this.mapRealmLayers[m.realm] = realmLayer;
+        if (firstLayer) {
+          realmLayer.addTo(map);
+          firstLayer = false;
+        }
+      }
+
+      const p1: L.LatLngExpression = [0, x];
+      const p2: L.LatLngExpression = [m.size[0], x + m.size[1]];
+
+      // Lazy load on click (if someone scrolls really far without using the map dialog).
+      const rect = L.rectangle([p1, p2], { color: '#ddd', weight: 1, fillOpacity: 0 }).addTo(this.map!);
+      rect.addEventListener('click', e => {
+        this.mapRealmLayers[m.realm]?.addTo(map);
+      });
+
+      // Add label above map.
+      L.marker([p1[0] + m.size[0] + 30, p1[1] + m.size[1] / 2], {
+        icon: L.divIcon({
+          className: 'map-label',
+          html: m.name,
+          iconSize: [100, 20]
+        })
+      }).addTo(this.map!);
+
+      // Add map image.
+      const layer = L.imageOverlay(m.src, [p1, p2], { attribution: m.attribution }).addTo(realmLayer!);
       this.mapImageLayers[m.name] = layer;
       x += m.size[1] + pad;
     });
@@ -244,7 +279,6 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     div.querySelector('.marker-popup-delete')?.addEventListener('click', () => {
       marker.remove();
       this.addMarker = undefined;
-      this.isAddingMarker = false;
     });
 
     // Add popup
@@ -265,6 +299,10 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
       const map = result.selectedMap;
       const layer = this.mapImageLayers[map.name];
       if (!layer) { return; }
+
+      const realmLayer = this.mapRealmLayers[map.realm]!;
+      realmLayer.addTo(this.map!);
+
       this.map?.fitBounds(layer.getBounds(), {});
     });
   }
@@ -466,20 +504,22 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
 
   /** Attempts to initialize the Leaflet.EdgeMarker plugin. */
   private initializeEdgeMarkers(): void {
-    if (this.isEdgeMarkersInitialized || !this.map) { return; }
-    const edgeMarker = (L as any).edgeMarker;
-    if (!edgeMarker) { return; }
-    this.isEdgeMarkersInitialized = true;
+    // Disabled until I figure out how to target specific markers.
 
-    edgeMarker({
-      icon: (L as any).icon({
-          iconUrl: '/assets/external/leaflet/edgemarker/arrow.png',
-          clickable: true,
-          iconSize: [48, 48],
-          iconAnchor: [24, 24]
-      }),
-      rotateIcons: true,
-      layerGroup: null
-    }).addTo(this.map);
+    // if (this.isEdgeMarkersInitialized || !this.map) { return; }
+    // const edgeMarker = (L as any).edgeMarker;
+    // if (!edgeMarker) { return; }
+    // this.isEdgeMarkersInitialized = true;
+
+    // edgeMarker({
+    //   icon: (L as any).icon({
+    //       iconUrl: '/assets/external/leaflet/edgemarker/arrow.png',
+    //       clickable: true,
+    //       iconSize: [48, 48],
+    //       iconAnchor: [24, 24]
+    //   }),
+    //   rotateIcons: true,
+    //   layerGroup: null
+    // }).addTo(this.map);
   }
 }

@@ -1,10 +1,12 @@
 <mat-dialog-content>
-  <mat-label>Jump to area</mat-label>
-  <mat-chip-set>
-    @for (map of data.maps; track $index) {
-    <mat-chip (click)="selectMap(map)">
-      {{ map.name }}
-    </mat-chip>
+  @for (realm of realms; track $index) {
+    <mat-label><b>{{ realm.name }}</b></mat-label>
+    <mat-chip-set>
+      @for (map of realm.maps; track $index) {
+      <mat-chip (click)="selectMap(map)">
+        {{ map.name }}
+      </mat-chip>
+    }
+    </mat-chip-set>
   }
-  </mat-chip-set>
 </mat-dialog-content>

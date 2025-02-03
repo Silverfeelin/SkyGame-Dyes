@@ -14,7 +14,18 @@ export class TrackerMapAreaDialogComponent {
   private readonly dialogRef = inject(MatDialogRef<TrackerMapAreaDialogComponent>);
   readonly data = inject<IPanDialogData>(MAT_DIALOG_DATA);
 
-  constructor() { }
+  realms: Array< { name: string, maps: Array<ITrackerMap> } > = [];
+  constructor() {
+    let lastRealm = '';
+    for (const map of this.data.maps || []) {
+      if (lastRealm !== map.realm) {
+        this.realms.push({ name: map.realm, maps: [] });
+        lastRealm = map.realm;
+      }
+
+      this.realms[this.realms.length - 1].maps.push(map);
+    }
+  }
 
   selectMap(map: ITrackerMap): void {
     this.data.selectedMap = map;
