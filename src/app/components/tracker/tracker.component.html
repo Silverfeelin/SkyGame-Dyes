@@ -9,7 +9,7 @@
   </div>
 }
 
-<div class="fabs-bl">
+<div class="fabs-abs fabs-bl">
   <button class="btn-ws-status" [class.btn-ws-status-inactive]="wsStatus === 'closed'" mat-fab [attr.title]="wsStatusText" (click)="wsConnect()">
     <mat-icon>
       @switch (wsStatus) {
@@ -25,6 +25,18 @@
   </button>
   <button mat-fab aria-label="Add dye plant" (click)="openMarkerDialog()" [class.btn-highlight]="isAddingMarker">
     <mat-icon>add</mat-icon>
+  </button>
+</div>
+
+<!-- Navigation -->
+<div class="fabs-abs fabs-l">
+  <button mat-mini-fab aria-label="Previous realm" (click)="mapPreviousRealm()" title="Go to previous Realm">
+    <mat-icon>arrow_back</mat-icon>
+  </button>
+</div>
+<div class="fabs-abs fabs-r">
+  <button mat-mini-fab aria-label="Next realm" (click)="mapNextRealm()" title="Go to next Realm">
+    <mat-icon>arrow_forward</mat-icon>
   </button>
 </div>
 

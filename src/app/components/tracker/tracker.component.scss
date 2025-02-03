@@ -15,15 +15,27 @@
   background: #0f1520;
 }
 
-.fabs-bl {
+.fabs-abs {
   position: fixed;
-  bottom: 20px;
-  left: 20px;
   z-index: 1000;
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
 
+.fabs-bl {
+  bottom: 20px;
+  left: 20px;
+}
+
+.fabs-l {
+  top: 50%;
+  left: 20px;
+}
+
+.fabs-r {
+  top: 50%;
+  right: 20px;
 }
 
 .btn-highlight {

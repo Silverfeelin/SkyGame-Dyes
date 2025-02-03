@@ -53,6 +53,7 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
   mapMarkerLayer?: L.LayerGroup;
   mapMarkers: Array<IMapMarker> = [];
   mapRealmLayers: { [key: string]: L.LayerGroup } = {};
+  mapCurrentRealmIndex = 0;
   isEdgeMarkersInitialized = false;
 
   // Add marker
@@ -170,6 +171,34 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
         this.mapPlaceCreateMarker(e.latlng);
       }
     });
+  }
+
+  mapNextRealm(): void {
+    const currentRealm = trackerMaps[this.mapCurrentRealmIndex].realm;
+    let i = -1;
+    for (let j = this.mapCurrentRealmIndex + 1; j < trackerMaps.length; j++) {
+      if (trackerMaps[j].realm !== currentRealm) { i = j; break; }
+    }
+    if (i < 0) { i = 0; }
+
+    const map = trackerMaps[i];
+    this.mapCurrentRealmIndex = i;
+    this.mapRealmLayers[map.realm]?.addTo(this.map!);
+    this.map!.fitBounds(this.mapImageLayers[map.name].getBounds(), {});
+  }
+
+  mapPreviousRealm(): void {
+    const currentRealm = trackerMaps[this.mapCurrentRealmIndex].realm;
+    let i = -1;
+    for (let j = this.mapCurrentRealmIndex - 1; j >= 0; j--) {
+      if (trackerMaps[j].realm !== currentRealm) { i = j; break; }
+    }
+    if (i < 0) { i = trackerMaps.length - 1; }
+
+    const map = trackerMaps[i];
+    this.mapCurrentRealmIndex = i;
+    this.mapRealmLayers[map.realm]?.addTo(this.map!);
+    this.map!.fitBounds(this.mapImageLayers[map.name].getBounds(), {});
   }
 
   /** Adds a marker to the map. */
