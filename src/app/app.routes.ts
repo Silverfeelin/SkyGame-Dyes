@@ -34,6 +34,12 @@ export const routes: Routes = [
     component: AuthLayoutComponent,
     children: [
       { path: 'tracker', component: TrackerComponent },
+    ]
+  },
+  // No layout
+  {
+    path: '',
+    children: [
       { path: 'infographic', component: InfographicComponent }
     ]
   }
