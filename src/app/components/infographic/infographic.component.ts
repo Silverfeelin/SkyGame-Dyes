@@ -75,6 +75,8 @@ export class InfographicComponent implements AfterViewInit {
 
   selectPolygon(path: SVGPathElement): void {
     this.section = path.dataset['section'];
+    if (!this.section) { return; }
+
     this.sectionDescription = path.dataset['description'];
     this.isOverlayVisible = true;
   }

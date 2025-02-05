@@ -31,6 +31,10 @@
       pointer-events: none;
       filter: drop-shadow(1px 1px 4px #000) drop-shadow(-1px -1px 4px #000) drop-shadow(1px -1px 4px #000) drop-shadow(-1px 1px 4px #000);
     }
+
+    path[data-section] {
+      cursor: pointer;
+    }
   }
 }
 
@@ -135,26 +139,5 @@
 @media screen and (max-width: 1024px) {
   .section-img {
     zoom: 0.5;
-  }
-}
-
-:host ::ng-deep {
-  .marker-area {
-    position: relative;
-    pointer-events: none;
-
-    .marker-area-label {
-      font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
-      font-size: 18px;
-      line-height: 18px;
-      white-space: pre;
-      text-shadow:
-        2px 2px 6px #000,
-        -2px -2px 6px #000,
-        2px -2px 6px #000,
-        -2px 2px 6px #000;
-      text-align: center;
-      transform: translate(-50%, -50%);
-    }
   }
 }
