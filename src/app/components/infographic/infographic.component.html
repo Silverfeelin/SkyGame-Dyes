@@ -1,0 +1,27 @@
+
+<!-- <div class="map-container">
+  <div #divMap class="map"></div>
+</div> -->
+
+@if (svgContent()) {
+  <div class="map-container">
+    <div class="map" [innerHTML]="svgContent()" (click)="onMapClick($event)">
+      <!-- <img src="/assets/external/maps/infographic/test.webp" alt="Infographic" class="infographic" />
+      <div class="map-polygons">
+        <svg style="top: 300px; left: 100px;">
+          <polygon
+            points="50,15 61,35 82,35 66,50 71,71 50,60 29,71 34,50 18,35 39,35" fill="#0000" stroke="red" stroke-width="4" (click)="selectPolygon()"/>
+        </svg>
+
+      </div> -->
+    </div>
+    <div class="map-swipe map-swipe-v map-swipe-up" (click)="onSwipeUp($event)" (swipeup)="onSwipeUp($event)"></div>
+    <div class="map-swipe map-swipe-v map-swipe-down" (click)="onSwipeDown($event)" (swipedown)="onSwipeDown($event)"></div>
+    <div class="map-swipe map-swipe-h map-swipe-right" (click)="onSwipeRight($event)" (swiperight)="onSwipeRight($event)"></div>
+    <div class="map-swipe map-swipe-h map-swipe-left" (click)="onSwipeLeft($event)" (swipeleft)="onSwipeLeft($event)"></div>
+  </div>
+}
+
+@if (isOverlayVisible) {
+  <app-overlay (close)="isOverlayVisible=false">test</app-overlay>
+}

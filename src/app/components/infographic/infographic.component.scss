@@ -1,0 +1,96 @@
+:host {
+  position: relative;
+}
+
+.map-container {
+  height: 100%;
+  width: 100%;
+}
+
+.map {
+  height: 100%;
+  width: 100%;
+  position: relative;
+  background: #0f1520;
+  padding: 40px;
+  overflow: auto;
+  box-sizing: border-box;
+
+  ::ng-deep {
+    svg {
+      width: 100%;
+      height: 100%;
+      min-width: 800px;
+      min-height: 600px;
+      object-fit: contain;
+      font-family: Oswald, Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+      font-weight: bold;
+    }
+
+    text {
+      pointer-events: none;
+      filter: drop-shadow(1px 1px 4px #000) drop-shadow(-1px -1px 4px #000) drop-shadow(1px -1px 4px #000) drop-shadow(-1px 1px 4px #000);
+    }
+  }
+}
+
+.map-polygons {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+
+  svg {
+    position: absolute;
+  }
+
+  polygon {
+    cursor: pointer;
+  stroke-linejoin: round;
+  }
+}
+
+.map-swipe {
+  position: absolute;
+  background: #202e4640;
+  z-index: 0;
+}
+
+.map-swipe-h {
+  width: min(15vw, 80px);
+  top: min(15vh, 80px);
+  bottom: min(15vh, 80px);
+}
+
+.map-swipe-v {
+  height: min(15vh, 80px);
+  width: 100%;
+  left: 0;
+}
+
+.map-swipe-up { bottom: 0; }
+.map-swipe-down { top: 0; }
+.map-swipe-left { right: 0; }
+.map-swipe-right { left: 0; }
+
+:host ::ng-deep {
+  .marker-area {
+    position: relative;
+    pointer-events: none;
+
+    .marker-area-label {
+      font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+      font-size: 18px;
+      line-height: 18px;
+      white-space: pre;
+      text-shadow:
+        2px 2px 6px #000,
+        -2px -2px 6px #000,
+        2px -2px 6px #000,
+        -2px 2px 6px #000;
+      text-align: center;
+      transform: translate(-50%, -50%);
+    }
+  }
+}
