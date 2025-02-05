@@ -23,6 +23,8 @@ export class InfographicComponent implements AfterViewInit {
   private readonly _domSanitizer = inject(DomSanitizer);
 
   svgContent = signal<SafeHtml>('');
+  sectionDescription?: string;
+  section?: string;
   isOverlayVisible = false;
 
   constructor(
@@ -31,7 +33,7 @@ export class InfographicComponent implements AfterViewInit {
   }
 
   ngAfterViewInit(): void {
-    this._http.get('/assets/external/maps/infographic/test.svg', { responseType: 'text' }).subscribe((svg) => {
+    this._http.get('/assets/external/maps/infographic/reference.svg', { responseType: 'text' }).subscribe((svg) => {
       // Replace relative paths with asset path.
       svg = svg.replace(/xlink:href="([^"]+)"/g, (match, p1) => {
         return `xlink:href="/assets/external/maps/infographic/${p1}"`;
@@ -72,7 +74,8 @@ export class InfographicComponent implements AfterViewInit {
   }
 
   selectPolygon(path: SVGPathElement): void {
-    const description = path.dataset['description'];
-    alert(`Select polygon: ${description}`);
+    this.section = path.dataset['section'];
+    this.sectionDescription = path.dataset['description'];
+    this.isOverlayVisible = true;
   }
 }

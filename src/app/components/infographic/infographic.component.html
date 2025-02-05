@@ -5,16 +5,7 @@
 
 @if (svgContent()) {
   <div class="map-container">
-    <div class="map" [innerHTML]="svgContent()" (click)="onMapClick($event)">
-      <!-- <img src="/assets/external/maps/infographic/test.webp" alt="Infographic" class="infographic" />
-      <div class="map-polygons">
-        <svg style="top: 300px; left: 100px;">
-          <polygon
-            points="50,15 61,35 82,35 66,50 71,71 50,60 29,71 34,50 18,35 39,35" fill="#0000" stroke="red" stroke-width="4" (click)="selectPolygon()"/>
-        </svg>
-
-      </div> -->
-    </div>
+    <div class="map" [innerHTML]="svgContent()" (click)="onMapClick($event)"></div>
     <div class="map-swipe map-swipe-v map-swipe-up" (click)="onSwipeUp($event)" (swipeup)="onSwipeUp($event)">
       <mat-icon fontSet="material-icons-outlined" class="arrow-icon" style="bottom: 12px; left: 50%; transform: translateX(-50%);">arrow_circle_down</mat-icon>
     </div>
@@ -31,5 +22,20 @@
 }
 
 @if (isOverlayVisible) {
-  <app-overlay (close)="isOverlayVisible=false">test</app-overlay>
+  <app-overlay (close)="isOverlayVisible=false" class="section-overlay">
+    @if (section) {
+      <div class="section-container">
+        @let src = '/assets/external/maps/infographic/sections/' + section + '.webp';
+        <img class="section-img" [src]="src" [alt]="sectionDescription || 'Area'"/>
+        <div class="section-markers">
+          <div class="section-marker" style="top: 50%; left: 50%;">
+            <img src="/assets/external/icons/medium.png" alt="Medium plant" class="section-marker-icon"/>
+          </div>
+          <div class="section-marker section-marker-active" style="top: 25%; left: 60%;">
+            <img src="/assets/external/icons/large.png" alt="Large plant" class="section-marker-icon"/>
+          </div>
+        </div>
+      </div>
+    }
+  </app-overlay>
 }
