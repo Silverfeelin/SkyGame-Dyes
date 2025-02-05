@@ -4,12 +4,13 @@ import { DomSanitizer, HammerModule, SafeHtml } from '@angular/platform-browser'
 import L from 'leaflet';
 import 'hammerjs';
 import { OverlayComponent } from "../overlay/overlay.component";
+import { MatIcon } from '@angular/material/icon';
 
 @Component({
   selector: 'app-infographic',
   templateUrl: './infographic.component.html',
   styleUrl: './infographic.component.scss',
-  imports: [HammerModule, OverlayComponent],
+  imports: [HammerModule, OverlayComponent, MatIcon],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class InfographicComponent implements AfterViewInit {
@@ -22,7 +23,7 @@ export class InfographicComponent implements AfterViewInit {
   private readonly _domSanitizer = inject(DomSanitizer);
 
   svgContent = signal<SafeHtml>('');
-  isOverlayVisible = true;
+  isOverlayVisible = false;
 
   constructor(
   ) {

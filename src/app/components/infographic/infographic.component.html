@@ -15,10 +15,18 @@
 
       </div> -->
     </div>
-    <div class="map-swipe map-swipe-v map-swipe-up" (click)="onSwipeUp($event)" (swipeup)="onSwipeUp($event)"></div>
-    <div class="map-swipe map-swipe-v map-swipe-down" (click)="onSwipeDown($event)" (swipedown)="onSwipeDown($event)"></div>
-    <div class="map-swipe map-swipe-h map-swipe-right" (click)="onSwipeRight($event)" (swiperight)="onSwipeRight($event)"></div>
-    <div class="map-swipe map-swipe-h map-swipe-left" (click)="onSwipeLeft($event)" (swipeleft)="onSwipeLeft($event)"></div>
+    <div class="map-swipe map-swipe-v map-swipe-up" (click)="onSwipeUp($event)" (swipeup)="onSwipeUp($event)">
+      <mat-icon fontSet="material-icons-outlined" class="arrow-icon" style="bottom: 12px; left: 50%; transform: translateX(-50%);">arrow_circle_down</mat-icon>
+    </div>
+    <div class="map-swipe map-swipe-v map-swipe-down" (click)="onSwipeDown($event)" (swipedown)="onSwipeDown($event)">
+      <mat-icon fontSet="material-icons-outlined" class="arrow-icon" style="top: 12px; left: 50%; transform: translateX(-50%);">arrow_circle_up</mat-icon>
+    </div>
+    <div class="map-swipe map-swipe-h map-swipe-right" (click)="onSwipeRight($event)" (swiperight)="onSwipeRight($event)">
+      <mat-icon fontSet="material-icons-outlined" class="arrow-icon" style="top: 50%; left: 12px; transform: translateY(-50%);">arrow_circle_left</mat-icon>
+    </div>
+    <div class="map-swipe map-swipe-h map-swipe-left" (click)="onSwipeLeft($event)" (swipeleft)="onSwipeLeft($event)">
+      <mat-icon fontSet="material-icons-outlined" class="arrow-icon" style="top: 50%; right: 12px; transform: translateY(-50%);">arrow_circle_right</mat-icon>
+    </div>
   </div>
 }
 
