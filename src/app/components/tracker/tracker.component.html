@@ -11,24 +11,24 @@
 
 <div class="fabs-abs fabs-bl">
   @if (devMode) {
-    <button mat-mini-fab aria-label="Dev mode" (click)="analysisPromptFile()">
+    <button mat-mini-fab aria-label="Dev mode" (click)="analysis.promptFile()">
       <mat-icon>code</mat-icon>
     </button>
   }
-  @if (analysisMarkers) {
+  @if (analysis.markers().length) {
     <div style="position: relative;">
       <button mat-mini-fab aria-label="Analysis" (click)="isAnalysisPanelVisible=!isAnalysisPanelVisible" title="Start analysis">
         <mat-icon>visibility_on</mat-icon>
       </button>
       @if (isAnalysisPanelVisible) {
         <div class="analysis-panel">
-          <button type="button" (click)="analysisReset()">Reset</button>
-          <button type="button" [class.b]="analysisFilters['hourOfDay']" (click)="analysisFilterHourOfDay()">Hour of day</button>
-          <button type="button" [class.b]="analysisFilters['dayOfWeek']" (click)="analysisFilterDayOfWeek()">Day of week</button>
-          <button type="button" [class.b]="analysisFilters['dayOfMonth']" (click)="analysisFilterDayOfMonth()">Day of month</button>
-          <button type="button" [class.b]="analysisFilters['weekOfYear']" (click)="analysisFilterWeekOfYear()">Week of year</button>
-          <button type="button" [class.b]="analysisFilters['size']" (click)="analysisFilterSize()">Size</button>
-          <button type="button" [class.b]="analysisFilters['username']" (click)="analysisFilterUsername()">Username</button>
+          <button type="button" (click)="analysis.reset()">Reset</button>
+          <button type="button" [class.b]="analysis.filters.hourOfDay()" (click)="analysis.promptHourOfDay()">Hour of day</button>
+          <button type="button" [class.b]="analysis.filters.dayOfWeek()" (click)="analysis.promptDayOfWeek()">Day of week</button>
+          <button type="button" [class.b]="analysis.filters.dayOfMonth()" (click)="analysis.promptDayOfMonth()">Day of month</button>
+          <button type="button" [class.b]="analysis.filters.weekOfYear()" (click)="analysis.promptWeekOfYear()">Week of year</button>
+          <button type="button" [class.b]="analysis.filters.size()" (click)="analysis.promptSize()">Size</button>
+          <button type="button" [class.b]="analysis.filters.username()" (click)="analysis.promptUsername()">Username</button>
         </div>
       }
     </div>

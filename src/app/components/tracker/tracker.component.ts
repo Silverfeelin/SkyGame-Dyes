@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, isDevMode, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, effect, ElementRef, inject, isDevMode, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { DateTime } from 'luxon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -13,6 +13,7 @@ import { TrackerMapMarkerDialogComponent } from './tracker-map-marker-dialog.com
 import { TrackerMapAreaDialogComponent } from './tracker-map-area-dialog.component';
 import { DateTimePipe } from '../../pipes/date-time.pipe';
 import { HttpClient } from '@angular/common/http';
+import { TrackerAnalysisService } from './tracker-analysis';
 
 interface IMapMarker {
   marker?: L.Marker;
@@ -39,34 +40,14 @@ interface IReceivedMessage {
 	message?: string;
 }
 
-interface IAnalysisResponseData {
-  columns: Array<string>;
-  markers: Array<Array<unknown>>;
-}
-
-interface IAnalysisMarker extends IMapMarker {
-  userId: string;
-  username: string;
-  createdOn: string;
-  date: DateTime;
-}
-
-type AnalysisFilters = {
-  custom?: (m: IAnalysisMarker) => boolean;
-  hourOfDay?: Array<number>;
-  dayOfWeek?: Array<number>;
-  dayOfMonth?: Array<number>;
-  weekOfYear?: Array<number>;
-  size?: Array<number>;
-  username?: string;
-}
 
 type WebSocketStatus = 'connecting' | 'open' | 'closed';
 @Component({
   selector: 'app-tracker',
   imports: [ MatIconModule, MatButtonModule, MatDialogModule, DateTimePipe ],
   templateUrl: './tracker.component.html',
-  styleUrl: './tracker.component.scss'
+  styleUrl: './tracker.component.scss',
+  providers: [TrackerAnalysisService]
 })
 export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('divMap', { static: true }) mapDiv!: ElementRef<HTMLDivElement>;
@@ -97,10 +78,8 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
 
   // Analysis
   devMode = isDevMode();
+  analysis = inject(TrackerAnalysisService);
   isAnalysisPanelVisible = false;
-  analysisMarkers?: Array<IAnalysisMarker>;
-  analysisFilters: AnalysisFilters = {};
-  mapAnalysisLayer?: L.LayerGroup;
 
   constructor(
     private readonly _dialog: MatDialog,
@@ -116,9 +95,16 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
       this.initializeEdgeMarkers();
     };
 
-    (window as any).analysisDownload = () => _zone.run(() => this.analysisDownload());
-    (window as any).analysisPromptFile = () => _zone.run(() => this.analysisPromptFile());
-    (window as any).analysisSetFilter = (f: (m: IAnalysisMarker) => boolean) => _zone.run(() => this.analysisSetFilter(f));
+    effect(() => {
+      const layer = this.analysis.layer();
+      if (layer) { layer.addTo(this.map!); }
+    });
+
+    effect(() => {
+      this.analysis.loaded()
+        ? this.mapMarkerLayer?.remove()
+        : this.mapMarkerLayer?.addTo(this.map!);
+    })
   }
 
   ngOnInit(): void {
@@ -588,214 +574,4 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     //   layerGroup: null
     // }).addTo(this.map);
   }
-
-  // #region Analysis stuff
-
-  analysisDownload(): void {
-    this._http.get<IAnalysisResponseData>(`/api/export`).subscribe(data => {
-      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'analysis-data.json';
-      a.click();
-      window.URL.revokeObjectURL(url);
-
-      const csv = [
-        data.columns.join(','),
-        ...data.markers.map(m => m.join(','))
-      ].join('\n');
-      const blobCsv = new Blob([csv], { type: 'text/csv' });
-      const urlCsv = window.URL.createObjectURL(blobCsv);
-      const aCsv = document.createElement('a');
-      aCsv.href = urlCsv;
-      aCsv.download = 'analysis-data.csv';
-      aCsv.click();
-      window.URL.revokeObjectURL(urlCsv);
-    });
-  }
-
-  analysisPromptFile(): void {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.addEventListener('change', () => {
-      const file = input.files?.[0];
-      if (!file) { return; }
-
-      const reader = new FileReader();
-      reader.onload = () => {
-        const data = reader.result as string;
-        let parsed: IAnalysisResponseData;
-        try {
-          parsed = JSON.parse(data) as IAnalysisResponseData;
-        } catch (e) {
-          alert('Invalid JSON data.');
-          return;
-        }
-        this.analysisLoadData(parsed);
-      };
-
-      reader.readAsText(file);
-    });
-
-    input.click();
-  }
-
-  analysisLoadData(data: IAnalysisResponseData): void {
-    console.log(data);
-    this.mapMarkerLayer?.remove();
-    this.mapAnalysisLayer?.remove();
-    this.mapAnalysisLayer = L.markerClusterGroup({
-      disableClusteringAtZoom: 1
-    }).addTo(this.map!);
-
-    const columnMap = new Map<string, number>();
-    data.columns.forEach((c, i) => columnMap.set(c, i));
-    const markers: Array<IAnalysisMarker> = data.markers.map((m, i) => {
-      return {
-        id: m[columnMap.get('id')!] as number,
-        createdOn: m[columnMap.get('createdOn')!] as string,
-        userId: m[columnMap.get('userId')!] as string,
-        username: m[columnMap.get('username')!] as string,
-        epoch: m[columnMap.get('epoch')!] as number,
-        date: DateTime.fromMillis(m[columnMap.get('epoch')!] as number, { zone: DateHelper.skyTimeZone }),
-        lat: m[columnMap.get('lat')!] as number,
-        lng: m[columnMap.get('lng')!] as number,
-        size: m[columnMap.get('size')!] as number
-      };
-    });
-
-    this.analysisMarkers = markers;
-
-    markers.forEach(marker => {
-      if (!this.mapAnalysisLayer) { return; }
-      const sizeIcon = marker.size === 3 ? 'large'
-        : marker.size === 1 ? 'small'
-        : 'medium';
-      const icon = trackerIcons[sizeIcon];
-      const m = L.marker([ marker.lat, marker.lng ], { icon });
-      marker.marker = m;
-
-      const popup = L.popup({
-        content: `
-          <div>
-            <div>ID: ${marker.id}</div>
-            <div>Created by: ${marker.username} (${marker.userId})</div>
-            <div>Created UTC: ${marker.createdOn}</div>
-            <div>Epoch: ${marker.epoch}</div>
-            <div>Sky Date: ${marker.date.toFormat('yyyy-MM-dd HH:mm')}</div>
-          </div>
-        `,
-        offset: [0, -12],
-      });
-      m.bindPopup(popup);
-
-      this.mapAnalysisLayer.addLayer(marker.marker);
-    });
-  }
-
-  analysisReset(): void {
-    if (!this.mapAnalysisLayer) { return; }
-    this.analysisFilters = {};
-    this.analysisApplyFilters();
-  }
-
-  analysisFilterDayOfWeek(): void {
-    this.analysisFilterRange('Enter days (e.g. 1-7 / 1,3,5,7 / even / uneven):', 'dayOfWeek', 1, 7);
-  }
-
-  analysisFilterDayOfMonth(): void {
-    this.analysisFilterRange('Enter days of the month (e.g. 1-31 / 1,15,31 / even / uneven):', 'dayOfMonth', 1, 31);
-  }
-
-  analysisFilterHourOfDay(): void {
-    this.analysisFilterRange('Enter hours (e.g. 0-11 / 0,2,4 / even / uneven):', 'hourOfDay', 0, 23);
-  }
-
-  analysisFilterWeekOfYear(): void {
-    this.analysisFilterRange('Enter weeks of the year (e.g. 1-53 / 1,5,9 / even / uneven):', 'weekOfYear', 1, 53);
-  }
-
-  analysisFilterSize(): void {
-    this.analysisFilterRange('Enter sizes (e.g. 2 / 1,3):', 'size', 1, 3);
-  }
-
-  analysisSetFilter(f: (m: IAnalysisMarker) => boolean): any {
-    this.analysisFilters.custom = f;
-  }
-
-  analysisFilterUsername(): void {
-    if (!this.mapAnalysisLayer) { return; }
-    const value = prompt('Enter username:');
-    this.analysisFilters.username = value || undefined;
-    this.analysisApplyFilters();
-  }
-
-  analysisFilterRange(msg: string, key: keyof AnalysisFilters, min: number, max: number): void {
-    if (!this.mapAnalysisLayer) { return; }
-    const value = prompt(msg);
-
-    if (!value) {
-      this.analysisFilters[key] = undefined;
-      this.analysisApplyFilters();
-      return;
-    }
-
-    const parsed = this.parseRange(value, min, max);
-    if (parsed.some(val => isNaN(val) || val < min || val > max)) {
-      alert('Invalid value.');
-      return;
-    }
-    console.log('Parsed', parsed);
-
-    this.analysisFilters[key] = parsed as any;
-    this.analysisApplyFilters();
-  }
-
-  analysisApplyFilters(): void {
-    this.analysisMarkers?.forEach(marker => {
-      const dayOfWeek = marker.date.weekday;
-      const hourOfDay = marker.date.hour;
-
-      let isValid = true;
-      isValid &&= this.analysisFilters.username ? marker.username === this.analysisFilters.username : true;
-      isValid &&= this.analysisFilters.hourOfDay?.length ? this.analysisFilters.hourOfDay.includes(hourOfDay) : true;
-      isValid &&= this.analysisFilters.dayOfWeek?.length ? this.analysisFilters.dayOfWeek.includes(dayOfWeek) : true;
-      isValid &&= this.analysisFilters.dayOfMonth?.length ? this.analysisFilters.dayOfMonth.includes(marker.date.day) : true;
-      isValid &&= this.analysisFilters.weekOfYear?.length ? this.analysisFilters.weekOfYear.includes(marker.date.weekNumber) : true;
-      isValid &&= this.analysisFilters.size?.length ? this.analysisFilters.size.includes(marker.size) : true;
-      isValid &&= this.analysisFilters.custom ? this.analysisFilters.custom(marker) : true;
-
-      isValid
-        ? this.mapAnalysisLayer?.addLayer(marker.marker!)
-        : this.mapAnalysisLayer?.removeLayer(marker.marker!);
-    });
-  }
-
-  /** Utility function to parse range strings (e.g., "1-3,5"). */
-  private parseRange(rangeStr: string, min: number, max: number): Array<number> {
-    if (rangeStr === 'even') {
-      return Array.from({ length: max - min + 1 }, (_, i) => i + min).filter(i => i % 2 === 0);
-    } else if (rangeStr === 'uneven') {
-      return Array.from({ length: max - min + 1 }, (_, i) => i + min).filter(i => i % 2 === 1);
-    }
-
-    return rangeStr.split(',').flatMap(part => {
-      const range = part.split('-').map(Number);
-      if (range.length === 1) {
-        return range[0];
-      } else if (range.length === 2) {
-        const [start, end] = range;
-        if (isNaN(start) || isNaN(end) || start < min || end > max || start > end) {
-          return [];
-        }
-        return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-      } else {
-        return [];
-      }
-    });
-  }
-
-  // #endregion
 }
