@@ -51,6 +51,7 @@ export class TrackerAnalysisService {
     private readonly _http: HttpClient,
     private readonly _zone: NgZone
   ) {
+    this.bindWindow();
   }
 
   bindWindow(): void {
