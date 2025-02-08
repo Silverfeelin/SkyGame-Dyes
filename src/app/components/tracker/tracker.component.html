@@ -22,9 +22,13 @@
       </button>
       @if (isAnalysisPanelVisible) {
         <div class="analysis-panel">
-          <button type="button" (click)="analysisClear()">Clear</button>
-          <button type="button" (click)="analysisAddDayOfWeek()">Day of week</button>
-          <button type="button" (click)="analysisAddHourOfDay()">Hour of day</button>
+          <button type="button" (click)="analysisReset()">Reset</button>
+          <button type="button" [class.b]="analysisFilters['hourOfDay']" (click)="analysisFilterHourOfDay()">Hour of day</button>
+          <button type="button" [class.b]="analysisFilters['dayOfWeek']" (click)="analysisFilterDayOfWeek()">Day of week</button>
+          <button type="button" [class.b]="analysisFilters['dayOfMonth']" (click)="analysisFilterDayOfMonth()">Day of month</button>
+          <button type="button" [class.b]="analysisFilters['weekOfYear']" (click)="analysisFilterWeekOfYear()">Week of year</button>
+          <button type="button" [class.b]="analysisFilters['size']" (click)="analysisFilterSize()">Size</button>
+          <button type="button" [class.b]="analysisFilters['username']" (click)="analysisFilterUsername()">Username</button>
         </div>
       }
     </div>

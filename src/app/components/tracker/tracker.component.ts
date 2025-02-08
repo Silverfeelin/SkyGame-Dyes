@@ -46,9 +46,19 @@ interface IAnalysisResponseData {
 
 interface IAnalysisMarker extends IMapMarker {
   userId: string;
-  username: number;
+  username: string;
   createdOn: string;
   date: DateTime;
+}
+
+type AnalysisFilters = {
+  custom?: (m: IAnalysisMarker) => boolean;
+  hourOfDay?: Array<number>;
+  dayOfWeek?: Array<number>;
+  dayOfMonth?: Array<number>;
+  weekOfYear?: Array<number>;
+  size?: Array<number>;
+  username?: string;
 }
 
 type WebSocketStatus = 'connecting' | 'open' | 'closed';
@@ -89,10 +99,7 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
   devMode = isDevMode();
   isAnalysisPanelVisible = false;
   analysisMarkers?: Array<IAnalysisMarker>;
-  analysisFilters: {
-    dayOfWeek?: Array<number>;
-    hourOfDay?: Array<number>;
-  } = {};
+  analysisFilters: AnalysisFilters = {};
   mapAnalysisLayer?: L.LayerGroup;
 
   constructor(
@@ -111,6 +118,7 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
 
     (window as any).analysisDownload = () => _zone.run(() => this.analysisDownload());
     (window as any).analysisPromptFile = () => _zone.run(() => this.analysisPromptFile());
+    (window as any).analysisSetFilter = (f: (m: IAnalysisMarker) => boolean) => _zone.run(() => this.analysisSetFilter(f));
   }
 
   ngOnInit(): void {
@@ -592,6 +600,18 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
       a.download = 'analysis-data.json';
       a.click();
       window.URL.revokeObjectURL(url);
+
+      const csv = [
+        data.columns.join(','),
+        ...data.markers.map(m => m.join(','))
+      ].join('\n');
+      const blobCsv = new Blob([csv], { type: 'text/csv' });
+      const urlCsv = window.URL.createObjectURL(blobCsv);
+      const aCsv = document.createElement('a');
+      aCsv.href = urlCsv;
+      aCsv.download = 'analysis-data.csv';
+      aCsv.click();
+      window.URL.revokeObjectURL(urlCsv);
     });
   }
 
@@ -626,7 +646,9 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     console.log(data);
     this.mapMarkerLayer?.remove();
     this.mapAnalysisLayer?.remove();
-    this.mapAnalysisLayer = L.markerClusterGroup().addTo(this.map!);
+    this.mapAnalysisLayer = L.markerClusterGroup({
+      disableClusteringAtZoom: 1
+    }).addTo(this.map!);
 
     const columnMap = new Map<string, number>();
     data.columns.forEach((c, i) => columnMap.set(c, i));
@@ -635,7 +657,7 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
         id: m[columnMap.get('id')!] as number,
         createdOn: m[columnMap.get('createdOn')!] as string,
         userId: m[columnMap.get('userId')!] as string,
-        username: m[columnMap.get('username')!] as number,
+        username: m[columnMap.get('username')!] as string,
         epoch: m[columnMap.get('epoch')!] as number,
         date: DateTime.fromMillis(m[columnMap.get('epoch')!] as number, { zone: DateHelper.skyTimeZone }),
         lat: m[columnMap.get('lat')!] as number,
@@ -655,47 +677,80 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
       const m = L.marker([ marker.lat, marker.lng ], { icon });
       marker.marker = m;
 
+      const popup = L.popup({
+        content: `
+          <div>
+            <div>ID: ${marker.id}</div>
+            <div>Created by: ${marker.username} (${marker.userId})</div>
+            <div>Created UTC: ${marker.createdOn}</div>
+            <div>Epoch: ${marker.epoch}</div>
+            <div>Sky Date: ${marker.date.toFormat('yyyy-MM-dd HH:mm')}</div>
+          </div>
+        `,
+        offset: [0, -12],
+      });
+      m.bindPopup(popup);
+
       this.mapAnalysisLayer.addLayer(marker.marker);
     });
   }
 
-  analysisClear(): void {
+  analysisReset(): void {
     if (!this.mapAnalysisLayer) { return; }
-    this.mapAnalysisLayer.clearLayers();
-  }
-
-  analysisAddDayOfWeek(): void {
-    if (!this.mapAnalysisLayer) { return; }
-    const sDay = prompt('Enter weekdays (e.g. 1-3,5):');
-    if (!sDay) { return; }
-
-    const days = sDay.split(',').flatMap(part => {
-      const range = part.split('-').map(Number);
-      if (range.length === 1) {
-      return range[0];
-      } else if (range.length === 2) {
-      const [start, end] = range;
-      if (isNaN(start) || isNaN(end) || start < 1 || end > 7 || start > end) {
-        alert('Invalid range.');
-        return [];
-      }
-      return Array.from({ length: end - start + 1 }, (_, i) => start + i);
-      } else {
-        return [];
-      }
-    });
-
-    if (days.some(day => isNaN(day) || day < 1 || day > 7)) {
-      alert('Invalid weekdays.');
-      return;
-    }
-
-    this.analysisFilters.dayOfWeek = days;
+    this.analysisFilters = {};
     this.analysisApplyFilters();
   }
 
-  analysisAddHourOfDay(): void {
+  analysisFilterDayOfWeek(): void {
+    this.analysisFilterRange('Enter days (e.g. 1-7 / 1,3,5,7 / even / uneven):', 'dayOfWeek', 1, 7);
+  }
 
+  analysisFilterDayOfMonth(): void {
+    this.analysisFilterRange('Enter days of the month (e.g. 1-31 / 1,15,31 / even / uneven):', 'dayOfMonth', 1, 31);
+  }
+
+  analysisFilterHourOfDay(): void {
+    this.analysisFilterRange('Enter hours (e.g. 0-11 / 0,2,4 / even / uneven):', 'hourOfDay', 0, 23);
+  }
+
+  analysisFilterWeekOfYear(): void {
+    this.analysisFilterRange('Enter weeks of the year (e.g. 1-53 / 1,5,9 / even / uneven):', 'weekOfYear', 1, 53);
+  }
+
+  analysisFilterSize(): void {
+    this.analysisFilterRange('Enter sizes (e.g. 2 / 1,3):', 'size', 1, 3);
+  }
+
+  analysisSetFilter(f: (m: IAnalysisMarker) => boolean): any {
+    this.analysisFilters.custom = f;
+  }
+
+  analysisFilterUsername(): void {
+    if (!this.mapAnalysisLayer) { return; }
+    const value = prompt('Enter username:');
+    this.analysisFilters.username = value || undefined;
+    this.analysisApplyFilters();
+  }
+
+  analysisFilterRange(msg: string, key: keyof AnalysisFilters, min: number, max: number): void {
+    if (!this.mapAnalysisLayer) { return; }
+    const value = prompt(msg);
+
+    if (!value) {
+      this.analysisFilters[key] = undefined;
+      this.analysisApplyFilters();
+      return;
+    }
+
+    const parsed = this.parseRange(value, min, max);
+    if (parsed.some(val => isNaN(val) || val < min || val > max)) {
+      alert('Invalid value.');
+      return;
+    }
+    console.log('Parsed', parsed);
+
+    this.analysisFilters[key] = parsed as any;
+    this.analysisApplyFilters();
   }
 
   analysisApplyFilters(): void {
@@ -704,10 +759,41 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
       const hourOfDay = marker.date.hour;
 
       let isValid = true;
-      isValid &&= this.analysisFilters.dayOfWeek?.length ? this.analysisFilters.dayOfWeek.includes(dayOfWeek) : true;
+      isValid &&= this.analysisFilters.username ? marker.username === this.analysisFilters.username : true;
       isValid &&= this.analysisFilters.hourOfDay?.length ? this.analysisFilters.hourOfDay.includes(hourOfDay) : true;
+      isValid &&= this.analysisFilters.dayOfWeek?.length ? this.analysisFilters.dayOfWeek.includes(dayOfWeek) : true;
+      isValid &&= this.analysisFilters.dayOfMonth?.length ? this.analysisFilters.dayOfMonth.includes(marker.date.day) : true;
+      isValid &&= this.analysisFilters.weekOfYear?.length ? this.analysisFilters.weekOfYear.includes(marker.date.weekNumber) : true;
+      isValid &&= this.analysisFilters.size?.length ? this.analysisFilters.size.includes(marker.size) : true;
+      isValid &&= this.analysisFilters.custom ? this.analysisFilters.custom(marker) : true;
 
-      isValid ? marker.marker?.addTo(this.mapAnalysisLayer!) : marker.marker?.remove();
+      isValid
+        ? this.mapAnalysisLayer?.addLayer(marker.marker!)
+        : this.mapAnalysisLayer?.removeLayer(marker.marker!);
+    });
+  }
+
+  /** Utility function to parse range strings (e.g., "1-3,5"). */
+  private parseRange(rangeStr: string, min: number, max: number): Array<number> {
+    if (rangeStr === 'even') {
+      return Array.from({ length: max - min + 1 }, (_, i) => i + min).filter(i => i % 2 === 0);
+    } else if (rangeStr === 'uneven') {
+      return Array.from({ length: max - min + 1 }, (_, i) => i + min).filter(i => i % 2 === 1);
+    }
+
+    return rangeStr.split(',').flatMap(part => {
+      const range = part.split('-').map(Number);
+      if (range.length === 1) {
+        return range[0];
+      } else if (range.length === 2) {
+        const [start, end] = range;
+        if (isNaN(start) || isNaN(end) || start < min || end > max || start > end) {
+          return [];
+        }
+        return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+      } else {
+        return [];
+      }
     });
   }
 
