@@ -1,9 +1,10 @@
-import { AfterViewInit, Component, ElementRef, isDevMode, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, isDevMode, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { DateTime } from 'luxon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import L from 'leaflet';
+import 'leaflet.markercluster';
 import { trackerIcons } from './tracker-icons';
 import { trackerMaps } from './tracker-maps';
 import { DateHelper } from '../../helpers/date-helper';
@@ -11,6 +12,7 @@ import { IPanDialogData } from './tracker.interface';
 import { TrackerMapMarkerDialogComponent } from './tracker-map-marker-dialog.component';
 import { TrackerMapAreaDialogComponent } from './tracker-map-area-dialog.component';
 import { DateTimePipe } from '../../pipes/date-time.pipe';
+import { HttpClient } from '@angular/common/http';
 
 interface IMapMarker {
   marker?: L.Marker;
@@ -35,6 +37,18 @@ interface IReceivedMessage {
   markers?: Array<WsMarker>;
 	marker?: WsMarker;
 	message?: string;
+}
+
+interface IAnalysisResponseData {
+  columns: Array<string>;
+  markers: Array<Array<unknown>>;
+}
+
+interface IAnalysisMarker extends IMapMarker {
+  userId: string;
+  username: number;
+  createdOn: string;
+  date: DateTime;
 }
 
 type WebSocketStatus = 'connecting' | 'open' | 'closed';
@@ -71,8 +85,20 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
   clockLastClear = DateTime.now().setZone(DateHelper.skyTimeZone).startOf('hour');
   clockSkyTime?: DateTime;
 
+  // Analysis
+  devMode = isDevMode();
+  isAnalysisPanelVisible = false;
+  analysisMarkers?: Array<IAnalysisMarker>;
+  analysisFilters: {
+    dayOfWeek?: Array<number>;
+    hourOfDay?: Array<number>;
+  } = {};
+  mapAnalysisLayer?: L.LayerGroup;
+
   constructor(
-    private readonly _dialog: MatDialog
+    private readonly _dialog: MatDialog,
+    private readonly _zone: NgZone,
+    private readonly _http: HttpClient
   ) {
     (window.L) = L;
     const edgeMarkerScript = document.createElement('script');
@@ -82,6 +108,9 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     edgeMarkerScript.onload = () => {
       this.initializeEdgeMarkers();
     };
+
+    (window as any).analysisDownload = () => _zone.run(() => this.analysisDownload());
+    (window as any).analysisPromptFile = () => _zone.run(() => this.analysisPromptFile());
   }
 
   ngOnInit(): void {
@@ -551,4 +580,136 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     //   layerGroup: null
     // }).addTo(this.map);
   }
+
+  // #region Analysis stuff
+
+  analysisDownload(): void {
+    this._http.get<IAnalysisResponseData>(`/api/export`).subscribe(data => {
+      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'analysis-data.json';
+      a.click();
+      window.URL.revokeObjectURL(url);
+    });
+  }
+
+  analysisPromptFile(): void {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (!file) { return; }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const data = reader.result as string;
+        let parsed: IAnalysisResponseData;
+        try {
+          parsed = JSON.parse(data) as IAnalysisResponseData;
+        } catch (e) {
+          alert('Invalid JSON data.');
+          return;
+        }
+        this.analysisLoadData(parsed);
+      };
+
+      reader.readAsText(file);
+    });
+
+    input.click();
+  }
+
+  analysisLoadData(data: IAnalysisResponseData): void {
+    console.log(data);
+    this.mapMarkerLayer?.remove();
+    this.mapAnalysisLayer?.remove();
+    this.mapAnalysisLayer = L.markerClusterGroup().addTo(this.map!);
+
+    const columnMap = new Map<string, number>();
+    data.columns.forEach((c, i) => columnMap.set(c, i));
+    const markers: Array<IAnalysisMarker> = data.markers.map((m, i) => {
+      return {
+        id: m[columnMap.get('id')!] as number,
+        createdOn: m[columnMap.get('createdOn')!] as string,
+        userId: m[columnMap.get('userId')!] as string,
+        username: m[columnMap.get('username')!] as number,
+        epoch: m[columnMap.get('epoch')!] as number,
+        date: DateTime.fromMillis(m[columnMap.get('epoch')!] as number, { zone: DateHelper.skyTimeZone }),
+        lat: m[columnMap.get('lat')!] as number,
+        lng: m[columnMap.get('lng')!] as number,
+        size: m[columnMap.get('size')!] as number
+      };
+    });
+
+    this.analysisMarkers = markers;
+
+    markers.forEach(marker => {
+      if (!this.mapAnalysisLayer) { return; }
+      const sizeIcon = marker.size === 3 ? 'large'
+        : marker.size === 1 ? 'small'
+        : 'medium';
+      const icon = trackerIcons[sizeIcon];
+      const m = L.marker([ marker.lat, marker.lng ], { icon });
+      marker.marker = m;
+
+      this.mapAnalysisLayer.addLayer(marker.marker);
+    });
+  }
+
+  analysisClear(): void {
+    if (!this.mapAnalysisLayer) { return; }
+    this.mapAnalysisLayer.clearLayers();
+  }
+
+  analysisAddDayOfWeek(): void {
+    if (!this.mapAnalysisLayer) { return; }
+    const sDay = prompt('Enter weekdays (e.g. 1-3,5):');
+    if (!sDay) { return; }
+
+    const days = sDay.split(',').flatMap(part => {
+      const range = part.split('-').map(Number);
+      if (range.length === 1) {
+      return range[0];
+      } else if (range.length === 2) {
+      const [start, end] = range;
+      if (isNaN(start) || isNaN(end) || start < 1 || end > 7 || start > end) {
+        alert('Invalid range.');
+        return [];
+      }
+      return Array.from({ length: end - start + 1 }, (_, i) => start + i);
+      } else {
+        return [];
+      }
+    });
+
+    if (days.some(day => isNaN(day) || day < 1 || day > 7)) {
+      alert('Invalid weekdays.');
+      return;
+    }
+
+    this.analysisFilters.dayOfWeek = days;
+    this.analysisApplyFilters();
+  }
+
+  analysisAddHourOfDay(): void {
+
+  }
+
+  analysisApplyFilters(): void {
+    this.analysisMarkers?.forEach(marker => {
+      const dayOfWeek = marker.date.weekday;
+      const hourOfDay = marker.date.hour;
+
+      let isValid = true;
+      isValid &&= this.analysisFilters.dayOfWeek?.length ? this.analysisFilters.dayOfWeek.includes(dayOfWeek) : true;
+      isValid &&= this.analysisFilters.hourOfDay?.length ? this.analysisFilters.hourOfDay.includes(hourOfDay) : true;
+
+      isValid ? marker.marker?.addTo(this.mapAnalysisLayer!) : marker.marker?.remove();
+    });
+  }
+
+  // #endregion
 }

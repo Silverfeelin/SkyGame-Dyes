@@ -81,3 +81,13 @@
 
   }
 }
+
+.analysis-panel {
+  position: fixed;
+  z-index: 1000;
+  left: 96px;
+  background: #232831;
+  bottom: 16px;
+  padding: 16px;
+  border-radius: 16px;
+}
