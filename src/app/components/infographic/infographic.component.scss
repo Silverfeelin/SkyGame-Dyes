@@ -1,0 +1,143 @@
+:host {
+  position: relative;
+}
+
+.map-container {
+  height: 100%;
+  width: 100%;
+}
+
+.map {
+  height: 100%;
+  width: 100%;
+  position: relative;
+  background: #0f1520;
+  padding: 40px;
+  overflow: auto;
+  box-sizing: border-box;
+
+  ::ng-deep {
+    svg {
+      width: 100%;
+      height: 100%;
+      min-width: 800px;
+      min-height: 600px;
+      object-fit: contain;
+      font-family: Oswald, Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+      font-weight: bold;
+    }
+
+    text {
+      pointer-events: none;
+      filter: drop-shadow(1px 1px 4px #000) drop-shadow(-1px -1px 4px #000) drop-shadow(1px -1px 4px #000) drop-shadow(-1px 1px 4px #000);
+    }
+
+    path[data-section] {
+      cursor: pointer;
+    }
+  }
+}
+
+.map-polygons {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+
+  svg {
+    position: absolute;
+  }
+
+  polygon {
+    cursor: pointer;
+  stroke-linejoin: round;
+  }
+}
+
+.map-swipe {
+  position: absolute;
+  background: #202e4640;
+  z-index: 0;
+}
+
+.map-swipe-h {
+  width: min(15vw, 80px);
+  top: min(15vh, 80px);
+  bottom: min(15vh, 80px);
+}
+
+.map-swipe-v {
+  height: min(15vh, 80px);
+  width: 100%;
+  left: 0;
+}
+
+.map-swipe-up { bottom: 0; }
+.map-swipe-down { top: 0; }
+.map-swipe-left { right: 0; }
+.map-swipe-right { left: 0; }
+
+.arrow-icon {
+  position: absolute;
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+  opacity: 0.6;
+  transition: opacity 0.3s;
+  cursor: pointer;
+
+  &:hover {
+    opacity: 1;
+  }
+}
+
+.section-container {
+  position: relative;
+  min-width: fit-content;
+  min-height: fit-content;
+}
+
+.section-img {
+  display: block;
+}
+
+.section-markers {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.section-marker {
+  position: relative;
+  display: inline-block;
+  background: #f00;
+  border-radius: 1000px;
+  transform: translate(-50%, -50%);
+  width: 50px;
+  height: 50px;
+  opacity: 0.5;
+}
+
+.section-marker-active {
+  background: #0f0;
+  opacity: 1;
+}
+
+.section-marker-icon {
+  position: absolute;
+  object-fit: cover;
+  top: 50%;
+  left: 50%;
+  width: calc(100% - 4px);
+  height: calc(100% - 4px);
+  transform: translate(-50%, -50%);
+}
+
+@media screen and (max-width: 1024px) {
+  .section-img {
+    zoom: 0.5;
+  }
+}

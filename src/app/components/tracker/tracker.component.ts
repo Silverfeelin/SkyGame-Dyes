@@ -1,9 +1,10 @@
-import { AfterViewInit, Component, ElementRef, isDevMode, OnDestroy, OnInit, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, effect, ElementRef, inject, isDevMode, NgZone, OnDestroy, OnInit, ViewChild } from '@angular/core';
 import { DateTime } from 'luxon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import L from 'leaflet';
+import 'leaflet.markercluster';
 import { trackerIcons } from './tracker-icons';
 import { trackerMaps } from './tracker-maps';
 import { DateHelper } from '../../helpers/date-helper';
@@ -11,6 +12,8 @@ import { IPanDialogData } from './tracker.interface';
 import { TrackerMapMarkerDialogComponent } from './tracker-map-marker-dialog.component';
 import { TrackerMapAreaDialogComponent } from './tracker-map-area-dialog.component';
 import { DateTimePipe } from '../../pipes/date-time.pipe';
+import { HttpClient } from '@angular/common/http';
+import { TrackerAnalysisService } from './tracker-analysis';
 
 interface IMapMarker {
   marker?: L.Marker;
@@ -37,12 +40,14 @@ interface IReceivedMessage {
 	message?: string;
 }
 
+
 type WebSocketStatus = 'connecting' | 'open' | 'closed';
 @Component({
   selector: 'app-tracker',
   imports: [ MatIconModule, MatButtonModule, MatDialogModule, DateTimePipe ],
   templateUrl: './tracker.component.html',
-  styleUrl: './tracker.component.scss'
+  styleUrl: './tracker.component.scss',
+  providers: [TrackerAnalysisService]
 })
 export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild('divMap', { static: true }) mapDiv!: ElementRef<HTMLDivElement>;
@@ -71,8 +76,15 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
   clockLastClear = DateTime.now().setZone(DateHelper.skyTimeZone).startOf('hour');
   clockSkyTime?: DateTime;
 
+  // Analysis
+  devMode = isDevMode();
+  analysis = inject(TrackerAnalysisService);
+  isAnalysisPanelVisible = false;
+
   constructor(
-    private readonly _dialog: MatDialog
+    private readonly _dialog: MatDialog,
+    private readonly _zone: NgZone,
+    private readonly _http: HttpClient
   ) {
     (window.L) = L;
     const edgeMarkerScript = document.createElement('script');
@@ -82,6 +94,17 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     edgeMarkerScript.onload = () => {
       this.initializeEdgeMarkers();
     };
+
+    effect(() => {
+      const layer = this.analysis.layer();
+      if (layer) { layer.addTo(this.map!); }
+    });
+
+    effect(() => {
+      this.analysis.loaded()
+        ? this.mapMarkerLayer?.remove()
+        : this.mapMarkerLayer?.addTo(this.map!);
+    })
   }
 
   ngOnInit(): void {

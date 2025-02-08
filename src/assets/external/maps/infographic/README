@@ -1,0 +1,5 @@
+The following assets must be provided for each area:
+
+* FILENAME.svg - The SVG file containing the area image, zone outlines, and labels.
+* FILENAME.png - The raw image of an area, which is included in the SVG.
+* FILENAME.webp - Optimized version of the PNG file. The website loads this version instead of the PNG.

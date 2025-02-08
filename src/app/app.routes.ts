@@ -6,6 +6,7 @@ import { inject } from '@angular/core';
 import { ContentLayoutComponent } from './layouts/content-layout/content-layout.component';
 import { AuthLayoutComponent } from './layouts/auth-layout/auth-layout.component';
 import { CookieHelper } from './helpers/cookie-helper';
+import { InfographicComponent } from './components/infographic/infographic.component';
 
 const canActivateAuth: CanActivateFn = (a, b) => {
   const router = inject(Router);
@@ -32,7 +33,14 @@ export const routes: Routes = [
     canActivate: [canActivateAuth],
     component: AuthLayoutComponent,
     children: [
-      { path: 'tracker', component: TrackerComponent }
+      { path: 'tracker', component: TrackerComponent },
+    ]
+  },
+  // No layout
+  {
+    path: '',
+    children: [
+      { path: 'infographic', component: InfographicComponent }
     ]
   }
 ];

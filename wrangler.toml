@@ -3,6 +3,11 @@ name = "sky-dyes"
 pages_build_output_dir = "dist/sky-game-dyes/browser"
 compatibility_date = "2025-02-01"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "sky-dyes"
+database_id = "89becba0-4a49-4b61-8998-fe0f9fa937d7"
+
 [[durable_objects.bindings]]
 name = "DURABLE_SKY_DYE"
 class_name = "SkyGameDyeServer"

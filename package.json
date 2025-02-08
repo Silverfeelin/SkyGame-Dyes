@@ -3,12 +3,12 @@
   "version": "1.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve --port=4201",
-    "build": "ng build",
-    "build-prod": "ng build --configuration production",
-    "watch": "ng build --watch --configuration development",
-    "wrangle": "npx wrangler pages dev ./dist/sky-game-dyes/browser",
-    "test": "ng test"
+    "start": "nx serve --port=4201 --no-hmr",
+    "build": "nx build",
+    "build-prod": "nx build --configuration production",
+    "watch": "nx build --watch --configuration development",
+    "wrangle": "npx wrangler pages dev ./dist/sky-game-dyes/browser --persist-to ../SkyGame-Dyes-Server/.wrangler-shared",
+    "test": "nx test"
   },
   "private": true,
   "dependencies": {
@@ -23,7 +23,9 @@
     "@angular/platform-browser-dynamic": "^19.1.0",
     "@angular/router": "^19.1.0",
     "@badgateway/oauth2-client": "^2.4.2",
+    "hammerjs": "^2.0.8",
     "leaflet": "^1.9.4",
+    "leaflet.markercluster": "^1.5.3",
     "luxon": "^3.5.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
@@ -31,11 +33,18 @@
   },
   "devDependencies": {
     "@angular-devkit/build-angular": "^19.1.4",
+    "@angular-devkit/core": "^19.1.4",
+    "@angular-devkit/schematics": "^19.1.4",
     "@angular/cli": "^19.1.4",
     "@angular/compiler-cli": "^19.1.0",
     "@cloudflare/workers-types": "^4.20250124.3",
+    "@nx/angular": "20.4.0",
+    "@nx/workspace": "20.4.0",
+    "@schematics/angular": "^19.1.4",
+    "@types/hammerjs": "^2.0.46",
     "@types/jasmine": "~5.1.0",
     "@types/leaflet": "^1.9.16",
+    "@types/leaflet.markercluster": "^1.5.5",
     "@types/luxon": "^3.4.2",
     "jasmine-core": "~5.5.0",
     "karma": "~6.4.0",
@@ -43,6 +52,7 @@
     "karma-coverage": "~2.2.0",
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
+    "nx": "20.4.0",
     "typescript": "~5.7.2",
     "wrangler": "^3.106.0"
   }
