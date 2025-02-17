@@ -19,6 +19,20 @@ export const trackerMaps: Array<ITrackerMap> = [
     attribution: '@sky_solsuga',
     src: '/assets/external/maps/solsuga/forest.webp',
     size: [3508, 2480]
+  },
+  {
+    name: 'Golden Wasteland',
+    realm: 'Golden Wasteland',
+    attribution: '@sky_solsuga',
+    src: '/assets/external/maps/solsuga/wasteland.webp',
+    size: [3508, 2480]
+  },
+  {
+    name: 'Treasure Reef',
+    realm: 'Golden Wasteland',
+    attribution: '@sky_solsuga',
+    src: '/assets/external/maps/solsuga/reef.webp',
+    size: [3508, 2480]
   }
 ]
 
