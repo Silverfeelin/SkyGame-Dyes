@@ -128,7 +128,7 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     const map = L.map(this.mapDiv.nativeElement, {
       attributionControl: false,
       crs: L.CRS.Simple,
-      minZoom: -4,
+      minZoom: isDevMode() ? -8 : -4,
       maxZoom: 3,
       zoom: -2,
       center: [ 1754, 1240 ],
@@ -138,15 +138,11 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
 
     L.control.attribution({ position: 'bottomright', prefix: 'Leaflet | Maps provided by' }).addTo(this.map);
 
-    const pad = 320;
-    const realmPad = 100000;
-    let x =  -realmPad;
     let lastRealm = '';
     let realmLayer: L.LayerGroup | undefined;
     let firstLayer = true;
     trackerMaps.forEach((m) => {
       if (m.realm !== lastRealm) {
-        x += realmPad;
         lastRealm = m.realm;
         realmLayer = L.layerGroup();
         this.mapRealmLayers[m.realm] = realmLayer;
@@ -156,8 +152,8 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       }
 
-      const p1: L.LatLngExpression = [0, x];
-      const p2: L.LatLngExpression = [m.size[0], x + m.size[1]];
+      const p1: L.LatLngExpression = m.pos;
+      const p2: L.LatLngExpression = [m.pos[0] + m.size[0], m.pos[1] + m.size[1]];
 
       // Lazy load on click (if someone scrolls really far without using the map dialog).
       const rect = L.rectangle([p1, p2], { color: '#ddd', weight: 1, fillOpacity: 0 }).addTo(this.map!);
@@ -176,8 +172,12 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
 
       // Add map image.
       const layer = L.imageOverlay(m.src, [p1, p2], { attribution: m.attribution }).addTo(realmLayer!);
+      if (isDevMode()) {
+        L.marker([p1[0], p1[1]], {
+          icon: L.divIcon({ className: '', html: `[${p1[0]}, ${p1[1]}]`, iconSize: [100, 20] })
+        }).addTo(this.map!);
+      }
       this.mapImageLayers[m.name] = layer;
-      x += m.size[1] + pad;
     });
 
     // Marker layer
