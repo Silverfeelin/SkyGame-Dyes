@@ -186,9 +186,26 @@ export class TrackerComponent implements OnInit, AfterViewInit, OnDestroy {
     // EdgeMarker plugin
     this.initializeEdgeMarkers();
 
+    const points: L.LatLngTuple[] = [];
+    const poly = L.polygon(points, { color: 'red', weight: 3, fillOpacity: 0 }).addTo(map);
+
+    if (isDevMode()) {
+      map.on('mousemove', (e) => {
+        document.title = `${e.latlng.lat.toFixed(0)}, ${e.latlng.lng.toFixed(0)}`;
+      });
+    }
+
     // Add marker on click.
     map.on('click', (e) => {
-      if (isDevMode()) { navigator.clipboard.writeText(`[${e.latlng.lat}, ${e.latlng.lng}]`); }
+      if (isDevMode()) {
+        if (e.originalEvent.shiftKey) {
+          points.length = 0;
+        }
+        points.push([e.latlng.lat, e.latlng.lng]);
+        poly.setLatLngs(points);
+        const json = JSON.stringify(points);
+        navigator.clipboard.writeText(json);
+      }
 
       if (this.isAddingMarker && !this.addMarker) {
         this.mapPlaceCreateMarker(e.latlng);

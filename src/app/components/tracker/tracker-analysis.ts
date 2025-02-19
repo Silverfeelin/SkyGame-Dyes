@@ -4,6 +4,7 @@ import { DateTime } from 'luxon';
 import { trackerIcons } from './tracker-icons';
 import L from 'leaflet';
 import { DateHelper } from '../../helpers/date-helper';
+import { trackerMaps } from './tracker-maps';
 
 interface IAnalysisResponseData {
   columns: Array<string>;
@@ -21,6 +22,7 @@ interface IAnalysisMarker {
   lng: number;
   size: number;
   date: DateTime;
+  hidden?: boolean;
 }
 
 type AnalysisFilters = {
@@ -121,8 +123,16 @@ export class TrackerAnalysisService {
     });
     this.layer.set(layer);
 
+    trackerMaps.forEach(m => {
+      m.areas?.forEach(a => {
+        L.polygon(a.polygon, { color: 'green', fillOpacity: 0.1, weight: 1 }).addTo(layer);
+      });
+    });
+
     const columnMap = new Map<string, number>();
     data.columns.forEach((c, i) => columnMap.set(c, i));
+
+    // Expose point data
     const markers: Array<IAnalysisMarker> = data.markers.map((m, i) => {
       return {
         id: m[columnMap.get('id')!] as number,
@@ -137,8 +147,13 @@ export class TrackerAnalysisService {
       };
     });
 
-    this.markers.set(markers);
+    // Expose map data
+    (window as any).maps = trackerMaps;
+    (window as any).areas = trackerMaps.flatMap(m => m.areas ?? []);
+    (window as any).points = markers;
+    (window as any).isPointInsidePolygon = this.isPointInsidePolygon;
 
+    this.markers.set(markers);
     markers.forEach(marker => {
       if (!this.layer) { return; }
       const sizeIcon = marker.size === 3 ? 'large'
@@ -249,10 +264,27 @@ export class TrackerAnalysisService {
       isValid &&= this.filters.size() ? this.filters.size()!.includes(marker.size) : true;
       isValid &&= this.filters.custom ? this.filters.custom(marker) : true;
 
+      marker.hidden = !isValid;
       isValid
         ? layer.addLayer(marker.marker!)
         : layer.removeLayer(marker.marker!);
     });
+  }
+
+  doSomeAnalysis(): void {
+    let csv = 'id,username,userId,epoch,area,size\n';
+    const markers = this.markers().filter(m => !m.hidden);
+    const areas = trackerMaps.flatMap(m => m.areas ?? []);
+
+    markers.forEach(m => {
+      const area = areas.find(a => this.isPointInsidePolygon([m.lat, m.lng], a.polygon));
+      if (!area) { return; }
+
+      csv += `${m.id},${m.username},${m.userId},${m.epoch},${area.name},${m.size}\n`;
+    });
+
+    navigator.clipboard.writeText(csv);
+    alert('Copied to clipboard.');
   }
 
   /** Utility function to parse range strings (e.g., "1-3,5"). */
@@ -279,4 +311,19 @@ export class TrackerAnalysisService {
     });
   }
 
+  /* https://stackoverflow.com/a/31813714 by gusjap */
+  private isPointInsidePolygon(point: [number, number], poly: Array<L.LatLngTuple>): boolean {
+    const y = point[0], x = point[1];
+    let inside = false;
+    for (var i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+        var xi = poly[i][1], yi = poly[i][0];
+        var xj = poly[j][1], yj = poly[j][0];
+
+        var intersect = ((yi > y) != (yj > y))
+            && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+
+    return inside;
+  }
 }
