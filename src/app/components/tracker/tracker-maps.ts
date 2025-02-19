@@ -27,7 +27,7 @@ export const trackerMaps: Array<ITrackerMap> = [
         polygon: [[1647,1407],[1655,2019],[1513,2193],[1519,2458],[2770,2432],[2744,1834],[2546,1530],[2356,1362]]
       },
       {
-        name: 'Temple Entrance',
+        name: 'Prairie Temple Entrance',
         polygon: [[3079,800],[2887,804],[2756,1045],[2864,1248],[3175,1236],[3169,807]]
       }
     ]
