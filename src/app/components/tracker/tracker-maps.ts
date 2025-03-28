@@ -85,12 +85,32 @@ export const trackerMaps: Array<ITrackerMap> = [
     ]
   },
   {
+    name: 'Wind Paths',
+    realm: 'Hidden Forest',
+    attribution: '@sky_solsuga',
+    src: '/assets/external/maps/solsuga/paths.webp',
+    size: [3508, 2480],
+    pos: [0, 108400],
+    areas: [
+      {
+        name: 'Wind Paths',
+        polygon: [[0,108400],[0,110880],[3508,110880],[3508,108400]]
+      }
+    ]
+  },
+  {
     name: 'Valley of Triumph',
     realm: 'Valley of Triumph',
     attribution: '@sky_solsuga',
     src: '/assets/external/maps/solsuga/valley.webp',
     size: [3508, 2480],
-    pos: [100000, 0]
+    pos: [100000, 0],
+    areas: [
+      {
+        name: 'Valley of Triumph',
+        polygon: [[100000,0],[100000,2480],[103508,2480],[103508,0]]
+      }
+    ]
   },
   {
     name: 'Golden Wasteland',
@@ -133,6 +153,20 @@ export const trackerMaps: Array<ITrackerMap> = [
       {
         name: 'Treasure Reef',
         polygon: [[0,211200],[0,213680],[3508,213680],[3508,211200]]
+      }
+    ]
+  },
+  {
+    name: 'Eye of Eden',
+    realm: 'Eye of Eden',
+    attribution: '@sky_solsuga',
+    src: '/assets/external/maps/solsuga/eden.webp',
+    size: [7000, 2480],
+    pos: [100000, 208400],
+    areas: [
+      {
+        name: 'Eye of Eden',
+        polygon: [[100000,208400],[100000,210880],[107000,210880],[107000,208400]]
       }
     ]
   }
